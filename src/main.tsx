@@ -7,6 +7,7 @@ import {enable,disable} from '@tauri-apps/plugin-autostart';
 import {command,native,emptySnapshot} from './services';
 import {bytes,defaultSettings,statuses,tree} from './types';
 import type {Settings,Snapshot,ArchivePlan,Entry} from './types';
+import {HubApp} from './hub/HubApp';
 import './styles/app.css';
 
 type Page='overview'|'files'|'activity'|'storage'|'settings';
@@ -96,4 +97,5 @@ function Onboarding({onClose,onDone}:{onClose:()=>void;onDone:(s:Settings,a:bool
   <div className="modal-actions">{step>0?<button className="button" disabled={busy} onClick={()=>{setError('');setStep(step-1);}}><ArrowLeft size={15}/>Geri</button>:<span/>}{step<3?<button className="button primary" disabled={busy} onClick={next}>Devam et <ChevronRight size={16}/></button>:<button className="button primary large" disabled={busy} onClick={async()=>{setBusy(true);setError('');try{await onDone(s,auto);}catch(e){setError(String(e));}finally{setBusy(false);}}}>{busy?<Loader2 size={16} className="spin"/>:<ShieldCheck size={16}/>} Yedeklemeyi başlat</button>}</div>
  </section></div>;
 }
-createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>);
+const hubRole=new URLSearchParams(location.search).get('hub');
+createRoot(document.getElementById('root')!).render(<React.StrictMode>{hubRole==='team'||hubRole==='customer'?<HubApp role={hubRole==='team'?'mutfak_admin':'customer'}/>:<App/>}</React.StrictMode>);

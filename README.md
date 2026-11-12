@@ -14,6 +14,10 @@ Mutfak Ajans için Türkçe, tek yönlü masaüstü yedekleme uygulaması. Tauri
 
 **Durum: 0.1.0 geliştirme ön sürümü. Üretime hazır olarak değerlendirmeyin.** Test edilmiş çekirdek ve arayüz mevcuttur. GitHub Actions macOS ARM64 ve Windows x64 için imzasız kurulum artifact'larını başarıyla üretti. Gerçek Google hesabı, macOS/Windows çöp kutusu, otomatik başlatma ve imzalı kurulumlar henüz uçtan uca doğrulanmadı. Tam liste: [Doğrulama ve sınırlar](docs/VALIDATION.md).
 
+## Mutfak Hub önizlemesi
+
+Repo, Sync masaüstü uygulamasına ek olarak rol tabanlı Mutfak Hub arayüzünün ilk test edilebilir dilimini içerir. `/?hub=team` Mutfak ekip görünümünü, `/?hub=customer` izole müşteri görünümünü açar. Bunlar gerçek kimlik doğrulaması değildir; Supabase bağlantısından önce tenant görünürlüğü, yayın davranışı ve arayüzü doğrulayan prototiplerdir. Ürün ve güvenlik sözleşmesi: [Mutfak Hub mimarisi](docs/HUB_ARCHITECTURE.md).
+
 ## Geliştirme
 
 Node.js 24 LTS, Rust 1.99.1 (rust-toolchain.toml), C/C++ derleme araçları gerekir. macOS: Xcode Command Line Tools. Windows: Visual Studio Build Tools “Desktop development with C++”, Windows SDK ve WebView2. Linux yalnızca geliştirme/doğrulama içindir; GTK 3, WebKitGTK 4.1, AppIndicator, OpenSSL ve DBus geliştirme paketleri gerekir.

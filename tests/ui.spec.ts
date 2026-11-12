@@ -41,3 +41,26 @@ test('archive requires a preview and explicit confirmation in the UI',async({pag
  expect(await page.evaluate(()=>(window as any).testCalls.find((c:any)=>c.name==='archive_file').args.confirmed)).toBe(true);
  await page.getByRole('navigation').getByRole('button',{name:'Dosyalar',exact:true}).click();await expect(page.getByText('Müşteriler/Kasım.psd',{exact:true})).toBeVisible();await page.getByRole('button',{name:'Müşteriler klasörü'}).click();await expect(page.getByText('Müşteriler/Kasım.psd',{exact:true})).not.toBeVisible();
 });
+
+test('Hub müşteri görünümü tenant ve yayın sınırlarını korur',async({page})=>{
+ await page.goto('/?hub=customer');
+ await expect(page.getByRole('heading',{name:'Merhaba, Deniz.'})).toBeVisible();
+ await expect(page.getByText('Kasım Story v3.jpg')).toBeVisible();
+ await expect(page.getByText('Kampanya Brief.pdf')).toBeVisible();
+ await expect(page.getByText('Kasım Story çalışma.psd')).not.toBeVisible();
+ await expect(page.getByText('Kış Menü Taslak.ai')).not.toBeVisible();
+ await expect(page.getByRole('button',{name:'Müşteriler'})).not.toBeVisible();
+ await page.screenshot({path:'artifacts/hub-customer.png',fullPage:true});
+});
+
+test('Hub ekip görünümü bütün müşteri alanlarını gösterir',async({page})=>{
+ await page.goto('/?hub=team');
+ await expect(page.getByRole('heading',{name:'Günaydın, Burak.'})).toBeVisible();
+ await page.getByRole('button',{name:'Dosyalar'}).click();
+ await expect(page.getByText('Kasım Story çalışma.psd')).toBeVisible();
+ await expect(page.getByText('Kış Menü Taslak.ai')).toBeVisible();
+ await page.getByRole('button',{name:'Müşteriler'}).click();
+ await expect(page.getByText('Flexi',{exact:true})).toBeVisible();
+ await expect(page.getByText('Nova Coffee',{exact:true})).toBeVisible();
+ await page.screenshot({path:'artifacts/hub-team.png',fullPage:true});
+});
