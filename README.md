@@ -1,5 +1,15 @@
 # Mutfak Sync
 
+**Cross-platform desktop backup for creative teams.**
+
+A one-way Google Drive backup application designed for Mutfak Ajans, preserving folder structures and keeping local deletions separate from cloud copies.
+
+`Tauri 2` · `Rust` · `React` · `TypeScript` · `SQLite` · `Rclone`
+
+[Architecture](docs/ARCHITECTURE.md) · [Validation](docs/VALIDATION.md) · [Operations](docs/OPERATIONS.md)
+
+---
+
 Mutfak Ajans için Türkçe, tek yönlü masaüstü yedekleme uygulaması. Tauri 2, Rust, React, TypeScript, SQLite ve paketlenmiş Rclone kullanır. Burak → `Mutfak Ajans/Burak PC`, Naz → `Mutfak Ajans/Naz PC`. Dosya hiyerarşisi ve boş klasörler korunur; yerel kök ikinci kez eklenmez. Yerel silme bulut kopyasını silmez.
 
 **Durum: 0.1.0 geliştirme ön sürümü. Üretime hazır olarak değerlendirmeyin.** Test edilmiş çekirdek ve arayüz mevcuttur. GitHub Actions macOS ARM64 ve Windows x64 için imzasız kurulum artifact'larını başarıyla üretti. Gerçek Google hesabı, macOS/Windows çöp kutusu, otomatik başlatma ve imzalı kurulumlar henüz uçtan uca doğrulanmadı. Tam liste: [Doğrulama ve sınırlar](docs/VALIDATION.md).
