@@ -1,0 +1,48 @@
+name: Test and package
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: aarch64-apple-darwin
+            bundles: app,dmg
+          - os: windows-2022
+            target: x86_64-pc-windows-msvc
+            bundles: nsis,msi
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.99.1
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci
+      - run: npm test
+      - run: npm run sidecar
+      - run: npm run sidecar -- ${{ matrix.target }}
+      - run: cargo test --manifest-path src-tauri/Cargo.toml --locked
+      - run: npm run tauri build -- --features desktop --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --ci
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mutfak-sync-${{ matrix.target }}-unsigned
+          path: |
+            src-tauri/target/${{ matrix.target }}/release/bundle/
+            docs/licenses/
+          if-no-files-found: error
+          retention-days: 14

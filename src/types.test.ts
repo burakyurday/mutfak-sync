@@ -1,0 +1,3 @@
+import {describe,it,expect} from 'vitest';
+import {bytes,tree,defaultSettings} from './types';
+describe('Dosya sunumu',()=>{it('büyük dosya boyutlarını biçimler',()=>{expect(bytes(5*1024**3)).toBe('5 GB');expect(bytes(0)).toBe('0 B');});it('Türkçe yolları bozmadan sıralar',()=>{const entries=[{path:'Müşteriler/İş.psd'},{path:'Arşiv/Şubat.ai'}] as Parameters<typeof tree>[0];expect(tree(entries).map(v=>v.path)).toEqual(['Arşiv/Şubat.ai','Müşteriler/İş.psd']);expect(entries[0].path).toBe('Müşteriler/İş.psd');});it('güvenli varsayılanlar kullanır',()=>{expect(defaultSettings.stability_secs).toBe(30);expect(defaultSettings.scan_secs).toBe(600);expect(defaultSettings.mock).toBe(true);});});
