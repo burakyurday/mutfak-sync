@@ -7,9 +7,12 @@
 | Kontrol | Sonuç |
 |---|---|
 | `cargo test --manifest-path src-tauri/Cargo.toml --locked` | 24 backup entegrasyon testi + 1 gerçek Rclone local-provider testi geçti. 0 başarısız. |
-| `npm test` | 3 Vitest testi geçti. |
-| `npm run test:e2e` | 4 Chromium/Playwright testi geçti. Gerçek dosya işlemleri için native IPC testi değildir. Bir test IPC test double kullanır. |
-| `npm run build` | TypeScript ve Vite üretim derlemesi geçti. JS 266.45 kB / gzip 81.42 kB. |
+| `npm test` | 7 Vitest testi geçti; 4 tanesi Hub tenant/yetki modelini kapsıyor. |
+| `npm run test:e2e` | 7 Chromium/Playwright testi geçti. Sync, Hub müşteri/ekip izolasyonu ve canlı Hub güvenli kurulum durumu kapsanıyor. Gerçek dış servis testi değildir. |
+| `npm run build` | TypeScript ve Vite üretim derlemesi geçti. Sync ana paketi ile canlı Supabase Hub ayrı chunk'lara bölündü. |
+| `npm run test:hub-schema` | Hub migration'ı izole PostgreSQL 15'e uygulandı. Müşteri tenant/görünürlük RLS reddi ve ekip erişimi kabul testleri geçti. |
+| `npm run test:hub-functions` | HMAC indirme bileti roundtrip ve değiştirilmiş imza reddi Deno testinden geçti. |
+| Edge Function `deno check` | `hub-drive` ve `hub-download` tip kontrolü geçti. |
 | `cargo check … --features desktop --locked` | Tauri, tray, autostart, keyring ve backend derleme kontrolü geçti. |
 | `cargo clippy … --features desktop --all-targets --locked -- -D warnings` | Uyarısız geçti. |
 | `cargo build … --features desktop --locked` | Linux geliştirme binary'si üretildi. macOS/Windows installer değildir. |
@@ -22,6 +25,14 @@
 Kaynaklar: `src-tauri/tests/backup.rs`, `src-tauri/tests/rclone_local.rs`, `src/types.test.ts`, `tests/ui.spec.ts`. Testler yalnızca geçici dosyaları kullanır. Onaylı arşivleme Linux'ta ayrı alt süreç ve izole `XDG_DATA_HOME` çöp kutusu ile test edildi. Kullanıcı dosyası silinmedi/değiştirilmedi.
 
 Ekran görüntüleri: `artifacts/dashboard.png`, `artifacts/dashboard-dark.png`. Bunlar gerçek React arayüzünün tarayıcı görünümüdür; sahte dolu hesap ekranı veya native macOS/Windows ekran görüntüsü değildir.
+
+## Mutfak Hub doğrulaması
+
+- E-posta OTP canlı istemcisi, rol/organizasyon çözümleme, müşteri ve proje yönetimi, yayınlama, 8 MiB parça yükleme, kısa ömürlü indirme ve Drive thumbnail proxy kodu mevcut.
+- Supabase service-role ve Google secret'ları yalnız Edge Function ortamından okunur. Frontend yalnız URL ve anon key kabul eder.
+- RLS testi Müşteri A'nın iç PSD'yi ve Müşteri B dosyasını göremediğini; kendi yüklemesi ile yayınlanan dosyayı görebildiğini doğruladı.
+- Müşterinin doğrudan `hub_files` satırı ekleme izni yoktur; kayıt yalnız Drive yüklemesi boyut, parent ve `appProperties.hub_file_id` ile doğrulandıktan sonra `ready` olur.
+- Gerçek Supabase ve Google Drive hesabıyla uçtan uca test yapılmadı. OAuth secret'ı, e-posta gönderimi, CORS resumable upload ve büyük Range indirme gerçek ortamda doğrulanmadan Hub üretime hazır sayılmaz.
 
 ## Zorunlu kabul senaryoları
 

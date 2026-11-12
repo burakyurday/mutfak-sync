@@ -44,6 +44,8 @@
 
 The repository also contains the first testable role-based Mutfak Hub slice. `/?hub=team` opens the Mutfak team view; `/?hub=customer` opens the tenant-isolated customer view. These routes are UI prototypes, not production authentication. They validate publication visibility and tenant boundaries before Supabase integration. See the [Mutfak Hub architecture (TR)](docs/HUB_ARCHITECTURE.md).
 
+The Supabase-backed application is available at `/?hub=live` when the public URL and anon key are configured. It includes email OTP authentication, RLS tenant isolation, customer/project administration, resumable Drive uploads, controlled publishing, proxied previews and short-lived downloads. Server credentials remain in Edge Function secrets. Deployment still requires a real Supabase project and explicit Google authorization; follow the [Hub deployment guide (TR)](docs/HUB_DEPLOYMENT.md).
+
 ## Getting started
 
 ### Download a development build
@@ -110,6 +112,7 @@ The existing CI matrix runs tests and produces unsigned desktop packages on macO
 | [Architecture](docs/ARCHITECTURE.md) | Engine, persistence, security and race-condition boundaries |
 | [Validation](docs/VALIDATION.md) | Tests, evidence and outstanding acceptance checks |
 | [Operations](docs/OPERATIONS.md) | Troubleshooting and operational guidance |
+| [Hub deployment (TR)](docs/HUB_DEPLOYMENT.md) | Supabase, Drive secrets, bootstrap and acceptance checks |
 | [Changelog](CHANGELOG.md) | Version history and release status |
 | [Roadmap](docs/ROADMAP.md) | Release gates and future work |
 | [Security](SECURITY.md) | Vulnerability reporting and safe handling of credentials |

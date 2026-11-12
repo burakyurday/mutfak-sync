@@ -64,3 +64,9 @@ test('Hub ekip görünümü bütün müşteri alanlarını gösterir',async({pag
  await expect(page.getByText('Nova Coffee',{exact:true})).toBeVisible();
  await page.screenshot({path:'artifacts/hub-team.png',fullPage:true});
 });
+
+test('Canlı Hub gizli anahtar istemeden güvenli kurulum durumunu gösterir',async({page})=>{
+ await page.goto('/?hub=live');
+ await expect(page.getByRole('heading',{name:'Sunucu bağlantısı bekleniyor.'})).toBeVisible();
+ await expect(page.getByText('Gizli service-role veya Google anahtarı tarayıcıya eklenmemelidir.')).toBeVisible();
+});

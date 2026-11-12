@@ -98,4 +98,5 @@ function Onboarding({onClose,onDone}:{onClose:()=>void;onDone:(s:Settings,a:bool
  </section></div>;
 }
 const hubRole=new URLSearchParams(location.search).get('hub');
-createRoot(document.getElementById('root')!).render(<React.StrictMode>{hubRole==='team'||hubRole==='customer'?<HubApp role={hubRole==='team'?'mutfak_admin':'customer'}/>:<App/>}</React.StrictMode>);
+const LiveHubApp=React.lazy(()=>import('./hub/LiveHubApp').then(module=>({default:module.LiveHubApp})));
+createRoot(document.getElementById('root')!).render(<React.StrictMode>{hubRole==='live'?<React.Suspense fallback={null}><LiveHubApp/></React.Suspense>:hubRole==='team'||hubRole==='customer'?<HubApp role={hubRole==='team'?'mutfak_admin':'customer'}/>:<App/>}</React.StrictMode>);
