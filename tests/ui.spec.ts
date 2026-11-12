@@ -1,18 +1,17 @@
 import {test,expect} from '@playwright/test';
 test('dashboard has honest empty state and navigation',async({page})=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
- await page.goto('/');await expect(page.getByRole('heading',{name:'Her şey yerli yerinde.'})).toBeVisible();await expect(page.getByText('Tarayıcı önizlemesi',{exact:false})).toBeVisible();
+ await page.goto('/');await expect(page.getByRole('heading',{name:'Mutfak Sync’i kuralım.'})).toBeVisible();await expect(page.getByText('Tarayıcı önizlemesi',{exact:false})).toBeVisible();
  await page.screenshot({path:'artifacts/dashboard.png',fullPage:true});
- for(const name of ['Dosyalar','Aktivite','Depolama','Ayarlar']){await page.getByRole('navigation').getByRole('button',{name,exact:true}).click();await expect(page.getByRole('heading',{name,exact:true})).toBeVisible();}
+ for(const name of ['Dosyalar','Yer Aç','Ayarlar']){await page.getByRole('navigation').getByRole('button',{name,exact:true}).click();await expect(page.getByRole('heading',{name,exact:true})).toBeVisible();}
  expect(errors).toEqual([]);
 });
 test('onboarding selects Naz and requires local folder',async({page})=>{
  await page.goto('/');await page.getByRole('button',{name:'Kurulumu başlat'}).click();
- await page.getByRole('button',{name:'Devam et'}).click();await page.getByRole('button',{name:'Naz Google Drive / Naz PC'}).click();
- await page.getByRole('button',{name:'Devam et'}).click();await expect(page.getByRole('checkbox',{name:/Mock bulut/})).toBeChecked();
- await page.getByRole('button',{name:'Devam et'}).click();await expect(page.getByText('└ Naz PC / projelerin')).toBeVisible();
+ await page.getByRole('button',{name:'Naz Naz PC klasörü'}).click();await page.getByRole('button',{name:'Devam et'}).click();
+ await page.getByText('Google’a bağlanmadan arayüzü dene').click();await page.getByRole('checkbox',{name:'Test modunu kullan'}).check();
  await page.getByRole('button',{name:'Devam et'}).click();await page.getByRole('button',{name:'Devam et'}).click();await expect(page.getByRole('alert')).toContainText('Yerel çalışma klasörünü seç');
- await page.getByRole('textbox',{name:'Yerel çalışma klasörü'}).fill('/tmp/Mutfak Ajans');await page.getByRole('button',{name:'Devam et'}).click();await expect(page.getByRole('heading',{name:'Her şey hazır.'})).toBeVisible();
+ await page.getByRole('textbox',{name:'Çalışma klasörü'}).fill('/tmp/Mutfak Ajans');await page.getByRole('button',{name:'Devam et'}).click();await expect(page.getByRole('heading',{name:'Hazırsın'})).toBeVisible();
  await page.getByRole('button',{name:'Yedeklemeyi başlat'}).click();await expect(page.getByRole('alert')).toContainText('masaüstü');
 });
 test('theme switch and search work',async({page})=>{
@@ -35,7 +34,7 @@ test('archive requires a preview and explicit confirmation in the UI',async({pag
    return null;
   }};
  });
- await page.goto('/');await page.getByRole('navigation').getByRole('button',{name:'Depolama',exact:true}).click();
+ await page.goto('/');await page.getByRole('navigation').getByRole('button',{name:'Yer Aç',exact:true}).click();
  await page.getByRole('button',{name:'Buluta arşivle ve yer aç'}).click();await expect(page.getByRole('dialog')).toContainText('Müşteriler/Kasım.psd');
  await page.getByRole('button',{name:'Vazgeç',exact:true}).click();expect(await page.evaluate(()=>(window as any).testCalls.some((c:any)=>c.name==='archive_file'))).toBe(false);
  await page.getByRole('button',{name:'Buluta arşivle ve yer aç'}).click();await page.getByRole('button',{name:'Onaylıyorum, çöp kutusuna taşı'}).click();await expect(page.getByRole('button',{name:'Geri yükle',exact:true})).toBeVisible();
