@@ -2,7 +2,7 @@
 
 Mutfak Ajans için Türkçe, tek yönlü masaüstü yedekleme uygulaması. Tauri 2, Rust, React, TypeScript, SQLite ve paketlenmiş Rclone kullanır. Burak → `Mutfak Ajans/Burak PC`, Naz → `Mutfak Ajans/Naz PC`. Dosya hiyerarşisi ve boş klasörler korunur; yerel kök ikinci kez eklenmez. Yerel silme bulut kopyasını silmez.
 
-**Durum: 0.1.0 geliştirme ön sürümü. Üretime hazır olarak değerlendirmeyin.** Test edilmiş çekirdek ve arayüz mevcuttur. Gerçek Google hesabı, macOS/Windows çöp kutusu, otomatik başlatma ve imzalı kurulumlar henüz uçtan uca doğrulanmadı. Hazır `.dmg`/`.exe`/`.msi` teslim edilmiş değildir; CI tanımı bunları platformlarında üretmek içindir. Tam liste: [Doğrulama ve sınırlar](docs/VALIDATION.md).
+**Durum: 0.1.0 geliştirme ön sürümü. Üretime hazır olarak değerlendirmeyin.** Test edilmiş çekirdek ve arayüz mevcuttur. GitHub Actions macOS ARM64 ve Windows x64 için imzasız kurulum artifact'larını başarıyla üretti. Gerçek Google hesabı, macOS/Windows çöp kutusu, otomatik başlatma ve imzalı kurulumlar henüz uçtan uca doğrulanmadı. Tam liste: [Doğrulama ve sınırlar](docs/VALIDATION.md).
 
 ## Geliştirme
 
@@ -89,7 +89,7 @@ npm run sidecar -- x86_64-pc-windows-msvc
 npm run tauri build -- --features desktop --target x86_64-pc-windows-msvc --bundles nsis,msi --ci
 ```
 
-Çıktılar: `src-tauri/target/<target>/release/bundle/{macos,dmg,nsis,msi}/`. [GitHub Actions](.github/workflows/build.yml) her platformda test, SHA-256 doğrulanmış doğru sidecar ve installer üretimi için tanımlıdır. Workflow dosyası yerelde oluşturuldu; bu oturumda GitHub'a gönderilmedi veya çalıştırılmadı. İndirme/yayın bağlantısı yoktur.
+Çıktılar: `src-tauri/target/<target>/release/bundle/{macos,dmg,nsis,msi}/`. [GitHub Actions](.github/workflows/build.yml) her platformda test, SHA-256 doğrulanmış doğru sidecar ve installer üretimi için tanımlıdır. 12 Kasım 2026 tarihli [başarılı workflow #2](https://github.com/burakyurday/mutfak-drive-yedekleme/actions/runs/43184830587) iki imzasız artifact üretti: `mutfak-sync-aarch64-apple-darwin-unsigned` ve `mutfak-sync-x86_64-pc-windows-msvc-unsigned`. GitHub oturumuyla çalışma sayfasındaki Artifacts bölümünden indirilebilir.
 
 İmzalama sertifikası ayarlanmadığından CI çıktıları **imzasızdır**. macOS dağıtımı için Apple Developer üyeliği, Developer ID Application, codesign ve notarization/stapling gerekir. Windows güvenilir dağıtımı için Authenticode imzası ve SmartScreen itibarı gerekir. OS güvenlik kontrollerini kapatmayın. İmzasız ön sürümü yalnızca doğrulanmış kaynak ve hash ile kontrollü testte kullanın; son kullanıcılara dağıtım için imzalama sürecini tamamlayın.
 

@@ -16,6 +16,7 @@
 | `npm audit --omit=dev --audit-level=high` | Üretim bağımlılıklarında 0 bilinen açık raporlandı; tam güvenlik denetimi değildir. |
 | `bash scripts/cloud-setup.sh` | Baştan sona tekrar çalıştırıldı, kurulum/sidecar/build/test/desktop check geçti. |
 | ARM64 macOS ve x64 Windows Rclone sidecar | Resmi paketler indirildi ve sabit SHA-256 değerleriyle doğrulandı. Yabancı mimaride çalıştırılmadı. |
+| GitHub Actions workflow #2 | Başarılı. macOS 15 ARM64 ve Windows 2022 x64 üzerinde testler, Tauri paketleme ve artifact yükleme geçti. macOS artifact 67,5 MB; Windows artifact 55,5 MB. |
 | Native Linux grafik açılışı | **Başarısız / ortam engeli:** WebKit yardımcı süreci sabit `/usr/lib/x86_64-linux-gnu/webkit2gtk-4.1/WebKitNetworkProcess` yolunda yok. Rootless sysroot derlemeyi sağlar, bu yolu sağlamaz. `sudo` yok; bwrap namespace kurulumu da desteklenmiyor. Güvenlik kapatılmadı. |
 
 Kaynaklar: `src-tauri/tests/backup.rs`, `src-tauri/tests/rclone_local.rs`, `src/types.test.ts`, `tests/ui.spec.ts`. Testler yalnızca geçici dosyaları kullanır. Onaylı arşivleme Linux'ta ayrı alt süreç ve izole `XDG_DATA_HOME` çöp kutusu ile test edildi. Kullanıcı dosyası silinmedi/değiştirilmedi.
@@ -53,7 +54,7 @@ Ek testler: path traversal, sembolik bağlantı, açık arşiv onayı, ikinci ci
 
 ## Eksikler ve teknik sınırlar
 
-- `.app`/`.dmg`/`.exe`/`.msi` **üretilmedi**. Workflow yerel dosya olarak hazır; GitHub'a gönderilmedi, çalıştırılmadı. macOS ve Windows runner'larında derleme, kurulum, tray/autostart, OS kasası ve çöp kutusu kabul testleri gerekir. Bunlar geçmeden dağıtıma hazır denemez.
+- GitHub Actions [workflow #2](https://github.com/burakyurday/mutfak-drive-yedekleme/actions/runs/43184830587) `.app`/`.dmg` ve `.exe`/`.msi` içeren imzasız artifact'ları üretti. Paketler henüz gerçek M1 Mac ve Windows bilgisayarına kurulup açılmadı; tray/autostart, OS kasası, Google OAuth ve çöp kutusu kabul testleri gerekir. Bunlar geçmeden dağıtıma hazır denemez.
 - Gerçek Google OAuth, token yenileme, büyük dosyada ağ kopması, kota/rate-limit/permission ve Shared Drive kabul testleri çalıştırılmadı. Hatalar şu anda güvenli genel mesajla gösterilir, ayrı hata sınıflandırması yoktur.
 - Code signing/notarization yoktur; CI tanımı imzasız artifact üretmek içindir. Güvenlik kontrollerini kapatma talimatı yoktur.
 - Profil, kök ve hedef değişikliği/migrasyonu engellidir. Aynı klasöre yeniden OAuth yapılabilir; uygulama içi hesap bağlantısını tamamen kaldırma ekranı yoktur. Google izin ekranından erişim iptal edilebilir.
