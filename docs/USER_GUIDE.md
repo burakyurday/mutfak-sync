@@ -2,7 +2,7 @@
 
 Mutfak Ajans için Türkçe, tek yönlü masaüstü yedekleme uygulaması. Tauri 2, Rust, React, TypeScript, SQLite ve paketlenmiş Rclone kullanır. Burak → `Mutfak Ajans/Burak PC`, Naz → `Mutfak Ajans/Naz PC`. Dosya hiyerarşisi ve boş klasörler korunur; yerel kök ikinci kez eklenmez. Yerel silme bulut kopyasını silmez.
 
-**Durum: 0.1.1 geliştirme ön sürümü. Üretime hazır olarak değerlendirmeyin.** Test edilmiş çekirdek ve arayüz mevcuttur. GitHub Actions macOS ARM64 ve Windows x64 için imzasız işletim sistemi kurulum artifact'larını başarıyla üretti. Gerçek Google hesabı, macOS/Windows çöp kutusu, otomatik başlatma ve platform imzalı kurulumlar henüz uçtan uca doğrulanmadı. Tam liste: [Doğrulama ve sınırlar](VALIDATION.md).
+**Durum: 0.1.1 ilk kararlı aday.** Test edilmiş çekirdek ve arayüz mevcuttur. GitHub Actions macOS ARM64 ve Windows x64 paketlerini üretti; iki platformda açılış, gerçek Google hesabı bağlantısı ve yedekleme kullanıcı tarafından doğrulandı. Token yenileme, macOS/Windows çöp kutusu, otomatik başlatma ve platform imzalı kurulumlar henüz tam kabul matrisinden geçmedi. Tam liste: [Doğrulama ve sınırlar](VALIDATION.md).
 
 ## Geliştirme
 

@@ -18,6 +18,7 @@
 | `bash scripts/cloud-setup.sh` | Baştan sona tekrar çalıştırıldı, kurulum/sidecar/build/test/desktop check geçti. |
 | ARM64 macOS ve x64 Windows Rclone sidecar | Resmi paketler indirildi ve sabit SHA-256 değerleriyle doğrulandı. Yabancı mimaride çalıştırılmadı. |
 | GitHub Actions workflow #2 | Başarılı. macOS 15 ARM64 ve Windows 2022 x64 üzerinde testler, Tauri paketleme ve artifact yükleme geçti. macOS artifact 67,5 MB; Windows artifact 55,5 MB. |
+| Gerçek cihaz kabul testi | **Kullanıcı tarafından doğrulandı:** Windows x64 ve Apple Silicon M1 üzerinde uygulama kuruldu/açıldı; gerçek Google Drive bağlantısı ve dosya yedekleme başarılı çalıştı. Test oturumu ajan tarafından doğrudan gözlemlenmedi. |
 | Native Linux grafik açılışı | **Başarısız / ortam engeli:** WebKit yardımcı süreci sabit `/usr/lib/x86_64-linux-gnu/webkit2gtk-4.1/WebKitNetworkProcess` yolunda yok. Rootless sysroot derlemeyi sağlar, bu yolu sağlamaz. `sudo` yok; bwrap namespace kurulumu da desteklenmiyor. Güvenlik kapatılmadı. |
 
 Kaynaklar: `src-tauri/tests/backup.rs`, `src-tauri/tests/rclone_local.rs`, `src/types.test.ts`, `tests/ui.spec.ts`. Testler yalnızca geçici dosyaları kullanır. Onaylı arşivleme Linux'ta ayrı alt süreç ve izole `XDG_DATA_HOME` çöp kutusu ile test edildi. Kullanıcı dosyası silinmedi/değiştirilmedi.
@@ -64,8 +65,8 @@ Ek testler: path traversal, sembolik bağlantı, açık arşiv onayı, ikinci ci
 
 ## Eksikler ve teknik sınırlar
 
-- GitHub Actions [workflow #2](https://github.com/burakyurday/mutfak-drive-yedekleme/actions/runs/43184830587) `.app`/`.dmg` ve `.exe`/`.msi` içeren imzasız artifact'ları üretti. Paketler henüz gerçek M1 Mac ve Windows bilgisayarına kurulup açılmadı; tray/autostart, OS kasası, Google OAuth ve çöp kutusu kabul testleri gerekir. Bunlar geçmeden dağıtıma hazır denemez.
-- Gerçek Google OAuth, token yenileme, büyük dosyada ağ kopması, kota/rate-limit/permission ve Shared Drive kabul testleri çalıştırılmadı. Hatalar şu anda güvenli genel mesajla gösterilir, ayrı hata sınıflandırması yoktur.
+- İmzalı updater paketleri ile `.app`/`.dmg` ve `.exe`/`.msi` üretildi. Gerçek M1 Mac ve Windows bilgisayarında açılış ve Drive yedekleme kullanıcı tarafından doğrulandı; tray/autostart, OS kasasının yeniden başlatma sonrası davranışı ve çöp kutusu için ayrıntılı kabul matrisi hâlâ gerekir.
+- Gerçek Google OAuth ilk bağlantısı ve upload kullanıcı tarafından doğrulandı. Token yenileme, büyük dosyada ağ kopması, kota/rate-limit/permission ve Shared Drive kabul testleri çalıştırılmadı. Hatalar şu anda güvenli genel mesajla gösterilir, ayrı hata sınıflandırması yoktur.
 - Code signing/notarization yoktur; CI tanımı imzasız artifact üretmek içindir. Güvenlik kontrollerini kapatma talimatı yoktur.
 - `release.yml` özel updater anahtarı olmadan yayın yapmaz; iki platform paketini imzalar, SHA-256 ve `latest.json` üretir. Preview yayınları otomatik kanala girmez. GitHub Secrets/Variable henüz yönetici tarafından tanımlanmadığı için updater özellikli `0.1.1` release'i oluşturulmadı ve gerçek update kurulumu çalıştırılmadı.
 - Profil, kök ve hedef değişikliği/migrasyonu engellidir. Aynı klasöre yeniden OAuth yapılabilir; uygulama içi hesap bağlantısını tamamen kaldırma ekranı yoktur. Google izin ekranından erişim iptal edilebilir.

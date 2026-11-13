@@ -17,7 +17,7 @@
 
 **Mutfak Sync is a one-way desktop backup application for creative teams.** Built for Mutfak Ajans, it preserves local project folders in Google Drive, keeps each workstation in its own destination, and protects cloud copies from local deletion.
 
-> **Development preview (v0.1.1).** The core and UI have automated test coverage; macOS ARM64 and Windows x64 installer builds have passed CI. Real Google OAuth and native platform acceptance tests are not complete. Do not rely on this version as the sole copy of important files.
+> **Initial stable candidate (v0.1.1).** The core and UI have automated test coverage; macOS ARM64 and Windows x64 builds passed CI and user-reported native acceptance with a real Drive upload. Token renewal, failure recovery and platform-specific archive behavior still need extended acceptance. Do not rely on this version as the sole copy of important files.
 
 | Capability | What it does |
 | :--- | :--- |
