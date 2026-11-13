@@ -141,6 +141,22 @@ impl Database {
             .collect::<rusqlite::Result<Vec<_>>>()?;
         Ok(rows)
     }
+    pub fn reset_retry_delays(&self) -> Result<()> {
+        self.conn.execute(
+            "UPDATE upload_queue SET available = ?1 WHERE available > ?1",
+            [now()],
+        )?;
+        Ok(())
+    }
+    pub fn clear_all(&self) -> Result<()> {
+        let tx = self.conn.unchecked_transaction()?;
+        tx.execute("DELETE FROM settings", [])?;
+        tx.execute("DELETE FROM upload_queue", [])?;
+        tx.execute("DELETE FROM file_manifest", [])?;
+        tx.execute("DELETE FROM devices", [])?;
+        tx.commit()?;
+        Ok(())
+    }
 }
 pub fn now() -> i64 {
     std::time::SystemTime::now()

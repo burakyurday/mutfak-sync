@@ -47,7 +47,16 @@ pub fn is_link(meta: &fs::Metadata) -> bool {
     }
 }
 pub fn checksum(path: &Path) -> Result<String> {
-    let mut f = fs::File::open(path).context("Dosya okunamıyor")?;
+    let mut f = match fs::File::open(path) {
+        Ok(file) => file,
+        Err(e) => {
+            #[cfg(windows)]
+            if e.raw_os_error() == Some(32) {
+                bail!("LOCKED: Dosya başka bir uygulama (Photoshop vb.) tarafından kullanımda veya kaydediliyor");
+            }
+            return Err(e).context("Dosya okunamıyor");
+        }
+    };
     let mut md = Md5::new();
     let mut buf = [0u8; 1024 * 128];
     loop {

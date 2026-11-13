@@ -157,7 +157,7 @@ impl RcloneProvider {
         };
         #[cfg(not(feature = "desktop"))]
         let config = self.config.clone();
-        let result = (|| -> Result<(bool, Vec<u8>)> {
+        let result = (|| -> Result<(bool, Vec<u8>, Option<String>)> {
             use std::io::{BufRead, Read};
             let is_transfer = args.first().is_some_and(|a| a == "copyto");
             let mut command = Command::new(&self.binary);
@@ -196,6 +196,7 @@ impl RcloneProvider {
                 stdout.read_to_end(&mut bytes).map(|_| bytes)
             });
             let stderr = child.stderr.take().context("Rclone stderr yok")?;
+            let mut classified_error: Option<String> = None;
             for line in std::io::BufReader::new(stderr)
                 .lines()
                 .map_while(std::result::Result::ok)
@@ -211,6 +212,45 @@ impl RcloneProvider {
                         }
                     }
                 }
+                if classified_error.is_none() {
+                    let lower = line.to_ascii_lowercase();
+                    if lower.contains("invalid_grant")
+                        || lower.contains("token expired")
+                        || lower.contains("oauth2: cannot fetch token")
+                        || lower.contains("token has been expired or revoked")
+                        || lower.contains("unauthorized")
+                        || lower.contains("error 401")
+                    {
+                        classified_error = Some("AUTH: Google Drive oturumunun süresi doldu. Lütfen Ayarlar'dan yeniden bağlanın.".into());
+                    } else if lower.contains("quotaexceeded")
+                        || lower.contains("userratelimitexceeded")
+                        || lower.contains("dailylimitexceeded")
+                        || lower.contains("storagequotaexceeded")
+                    {
+                        classified_error = Some(
+                            "QUOTA: Google Drive depolama alanı doldu veya günlük kota aşıldı."
+                                .into(),
+                        );
+                    } else if lower.contains("ratelimitexceeded") {
+                        classified_error = Some("RATE_LIMIT: Google Drive istek sınırı aşıldı; birazdan otomatik yeniden denenecek.".into());
+                    } else if lower.contains("dial tcp")
+                        || lower.contains("connection refused")
+                        || lower.contains("connection reset")
+                        || lower.contains("i/o timeout")
+                        || lower.contains("no such host")
+                        || lower.contains("network is unreachable")
+                        || lower.contains("tls handshake timeout")
+                        || lower.contains("read: connection reset by peer")
+                    {
+                        classified_error = Some("NETWORK: Ağ bağlantısı kurulamadı veya kesildi. İnternet bağlantınızı kontrol edin.".into());
+                    } else if lower.contains("being used by another process")
+                        || lower.contains("process cannot access the file")
+                        || lower.contains("sharing violation")
+                        || lower.contains("os error 32")
+                    {
+                        classified_error = Some("LOCKED: Dosya başka bir uygulama (Photoshop vb.) tarafından kullanımda veya kaydediliyor.".into());
+                    }
+                }
             }
             let status = child.wait()?;
             let bytes = reader
@@ -219,7 +259,7 @@ impl RcloneProvider {
             if is_transfer {
                 let _ = fs::remove_file(self.work.join("transfer.json"));
             }
-            Ok((status.success(), bytes))
+            Ok((status.success(), bytes, classified_error))
         })();
         #[cfg(feature = "desktop")]
         {
@@ -232,8 +272,11 @@ impl RcloneProvider {
             let _ = fs::remove_file(&config);
             persist?;
         }
-        let (success, stdout) = result?;
+        let (success, stdout, classified) = result?;
         if !success {
+            if let Some(err) = classified {
+                bail!("{err}");
+            }
             // Never forward rclone output: it can contain credential material or URLs.
             bail!("DRIVE: Aktarım başarısız. Ağ, kota ve hesap yetkisini kontrol edin.");
         }

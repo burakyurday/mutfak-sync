@@ -178,8 +178,44 @@ async fn configure(
 }
 #[tauri::command]
 async fn backup_now(state: State<'_, AppState>) -> std::result::Result<(), String> {
-    state.scan.store(true, Ordering::Relaxed);
-    Ok(())
+    let s = state.inner().clone();
+    blocking(move || {
+        if let Some(ref mut c) = *s.core.lock().unwrap() {
+            let _ = c.reset_retry_delays();
+        }
+        s.scan.store(true, Ordering::Relaxed);
+        Ok(())
+    })
+    .await
+}
+#[tauri::command]
+async fn disconnect_account(state: State<'_, AppState>) -> std::result::Result<(), String> {
+    let s = state.inner().clone();
+    blocking(move || {
+        let mut guard = s.core.lock().unwrap();
+        *guard = None;
+        drop(guard);
+
+        #[cfg(feature = "desktop")]
+        {
+            if let Ok(entry) = keyring::Entry::new("com.mutfakajans.sync", "rclone-config") {
+                let _ = entry.delete_password();
+            }
+            if let Ok(entry) = keyring::Entry::new("com.mutfakajans.sync", "drive-root") {
+                let _ = entry.delete_password();
+            }
+        }
+
+        let db = Database::open(&s.data.join("state.sqlite"))?;
+        db.clear_all()?;
+        db.log("Google Drive ve hesap bağlantısı kullanıcı tarafından sıfırlandı.")?;
+
+        *s.last_error.lock().unwrap() = None;
+        s.scan.store(false, Ordering::Relaxed);
+        s.dirty.store(true, Ordering::Relaxed);
+        Ok(())
+    })
+    .await
 }
 #[tauri::command]
 async fn pause(state: State<'_, AppState>) -> std::result::Result<(), String> {
@@ -398,7 +434,7 @@ fn open_location(
         _ => Err("Geçersiz konum".into()),
     }
 }
-fn background(s: AppState) {
+fn background(s: AppState, app: tauri::AppHandle) {
     std::thread::spawn(move || {
         let mut last = Instant::now() - Duration::from_secs(601);
         let mut watcher: Option<RecommendedWatcher> = None;
@@ -475,6 +511,24 @@ fn background(s: AppState) {
                     c.paused = s.paused.load(Ordering::Relaxed);
                     if let Err(e) = c.tick() {
                         *s.last_error.lock().unwrap() = Some(e.to_string());
+                    }
+                    if let Some(tray) = app.tray_by_id("main") {
+                        let tooltip = if c.paused {
+                            "Mutfak Sync · Duraklatıldı"
+                        } else if s.last_error.lock().unwrap().is_some() {
+                            "Mutfak Sync · Kontrol gerekiyor"
+                        } else {
+                            let is_uploading =
+                                c.db.entries()
+                                    .map(|entries| entries.iter().any(|e| e.status == "uploading"))
+                                    .unwrap_or(false);
+                            if is_uploading {
+                                "Mutfak Sync · Dosyalar yedekleniyor..."
+                            } else {
+                                "Mutfak Sync · Dosyaların güvende"
+                            }
+                        };
+                        let _ = tray.set_tooltip(Some(tooltip));
                     }
                 }
             }
@@ -553,7 +607,7 @@ pub fn run() {
                 _lock: Arc::new(lock),
             };
             app.manage(s.clone());
-            background(s);
+            background(s, app.handle().clone());
             use tauri::{
                 menu::{Menu, MenuItem},
                 tray::TrayIconBuilder,
@@ -576,8 +630,8 @@ pub fn run() {
                 .map(|i| i as &dyn tauri::menu::IsMenuItem<tauri::Wry>)
                 .collect();
             let menu = Menu::with_items(app, &refs)?;
-            let mut tray = TrayIconBuilder::new()
-                .tooltip("Mutfak Sync")
+            let mut tray = TrayIconBuilder::with_id("main")
+                .tooltip("Mutfak Sync · Hazır")
                 .menu(&menu)
                 .on_menu_event(|app, event| {
                     let state = app.state::<AppState>();
@@ -634,7 +688,8 @@ pub fn run() {
             connect_drive,
             cancel_drive,
             diagnostics,
-            open_location
+            open_location,
+            disconnect_account
         ])
         .run(tauri::generate_context!())
         .expect("Mutfak Sync başlatılamadı");

@@ -50,3 +50,29 @@ test('Canlı Hub masaüstünü ikinci bir veritabanına bağlamaz',async({page})
  await expect(page.getByText('Neon tabanlı Hub’da çalışır',{exact:false})).toBeVisible();
  await expect(page.getByText('Hub adresi dağıtım sırasında',{exact:false})).toBeVisible();
 });
+
+test('Ayarlar ekranında kurulumu sıfırlama açık onay gerektirir',async({page})=>{
+ await page.addInitScript(()=>{
+  const w=window as unknown as Record<string,any>;
+  const settings={user:'Burak',root:'/tmp/test-only',folder_id:'https://drive.google.com/drive/folders/test',mock:false,stability_secs:30,scan_secs:600,bandwidth:'',exclude_dev:false,versions:false};
+  w.isTauri=true;w.testCalls=[];
+  w.__TAURI_INTERNALS__={transformCallback:()=>1,invoke:async(name:string,args:any)=>{
+   w.testCalls.push({name,args});
+   if(name==='plugin:app|version')return '0.1.3';
+   if(name==='snapshot')return {settings,entries:[],activity:[],paused:false,error:null,free_bytes:1234567,device:'test-device',progress:null};
+   if(name==='disconnect_account')return null;
+   return null;
+  }};
+ });
+ await page.goto('/');
+ await page.getByRole('navigation').getByRole('button',{name:'Ayarlar',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Kurulumu sıfırla'})).toBeVisible();
+ await page.getByRole('button',{name:'Kurulumu sıfırla'}).click();
+ await expect(page.getByRole('dialog')).toContainText('Kurulumu ve Bağlantıyı Sıfırla');
+ await page.getByRole('button',{name:'Vazgeç',exact:true}).click();
+ expect(await page.evaluate(()=>(window as any).testCalls.some((c:any)=>c.name==='disconnect_account'))).toBe(false);
+
+ await page.getByRole('button',{name:'Kurulumu sıfırla'}).click();
+ await page.getByRole('button',{name:'Onaylıyorum, sıfırla'}).click();
+ expect(await page.evaluate(()=>(window as any).testCalls.some((c:any)=>c.name==='disconnect_account'))).toBe(true);
+});

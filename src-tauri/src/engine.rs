@@ -176,10 +176,25 @@ impl<P: CloudProvider> Engine<P> {
         match self.transfer(&entry) {
             Ok(()) => {}
             Err(e) => {
-                let attempts = entry.retry.saturating_add(1);
-                let delay = (5i64.saturating_mul(2i64.pow(attempts.min(10)))).min(3600)
-                    + rand::random_range(0..5);
                 let error = e.to_string();
+                let is_locked = error.contains("LOCKED")
+                    || error.contains("os error 32")
+                    || error.contains("being used by another process");
+                let is_network = error.contains("NETWORK") || error.contains("OFFLINE");
+                let attempts = if is_locked {
+                    entry.retry
+                } else {
+                    entry.retry.saturating_add(1)
+                };
+                let delay = if is_locked {
+                    self.settings.stability_secs as i64
+                } else if is_network {
+                    (10i64.saturating_mul(2i64.pow(attempts.min(6)))).min(900)
+                        + rand::random_range(0..5)
+                } else {
+                    (5i64.saturating_mul(2i64.pow(attempts.min(10)))).min(3600)
+                        + rand::random_range(0..5)
+                };
                 let tx = self.db.conn.transaction()?;
                 tx.execute(
                     "UPDATE file_manifest SET status='error',retry=?2,error=?3 WHERE path=?1",
@@ -197,7 +212,16 @@ impl<P: CloudProvider> Engine<P> {
     }
     fn transfer(&mut self, e: &Entry) -> Result<()> {
         let local = safe_path(Path::new(&self.settings.root), &e.path)?;
-        let before = fs::metadata(&local)?;
+        let before = match fs::metadata(&local) {
+            Ok(m) => m,
+            Err(err) => {
+                #[cfg(windows)]
+                if err.raw_os_error() == Some(32) {
+                    bail!("LOCKED: Dosya başka bir uygulama (Photoshop vb.) tarafından kullanımda veya kaydediliyor");
+                }
+                return Err(err.into());
+            }
+        };
         if e.kind == "file" && (before.len() != e.size || stamp(&before)? != e.modified) {
             self.requeue(&e.path)?;
             return Ok(());
@@ -239,7 +263,16 @@ impl<P: CloudProvider> Engine<P> {
             self.cloud.upload(&local, &e.path)?
         };
         if e.kind == "file" {
-            let after = fs::metadata(&local)?;
+            let after = match fs::metadata(&local) {
+                Ok(m) => m,
+                Err(err) => {
+                    #[cfg(windows)]
+                    if err.raw_os_error() == Some(32) {
+                        bail!("LOCKED: Dosya başka bir uygulama (Photoshop vb.) tarafından kullanımda veya kaydediliyor");
+                    }
+                    return Err(err.into());
+                }
+            };
             if stamp(&before)? != stamp(&after)?
                 || before.len() != after.len()
                 || checksum(&local)? != hash
@@ -257,6 +290,9 @@ impl<P: CloudProvider> Engine<P> {
         tx.commit()?;
         self.db.log(&format!("{} yedeklendi", e.path))?;
         Ok(())
+    }
+    pub fn reset_retry_delays(&mut self) -> Result<()> {
+        self.db.reset_retry_delays()
     }
     fn requeue(&mut self, path: &str) -> Result<()> {
         let p = safe_path(Path::new(&self.settings.root), path)?;

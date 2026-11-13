@@ -1,1 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" rx="116" fill="#25322d"/><path d="M107 335V182h53v19c13-17 29-25 50-25 23 0 40 10 50 28 15-18 33-28 56-28 39 0 65 27 65 71v88h-56v-82c0-20-8-31-22-31s-24 12-24 32v81h-56v-82c0-21-7-31-22-31s-24 12-24 32v81z" fill="#fff"/><circle cx="403" cy="132" r="22" fill="#b7e26e"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#182234" />
+      <stop offset="100%" stop-color="#0b111c" />
+    </linearGradient>
+    <filter id="emeraldGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#10b981" flood-opacity="0.8" />
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="124" fill="url(#bgGrad)" stroke="rgba(255,255,255,0.12)" stroke-width="2" />
+  <path d="M107 335V182h53v19c13-17 29-25 50-25 23 0 40 10 50 28 15-18 33-28 56-28 39 0 65 27 65 71v88h-56v-82c0-20-8-31-22-31s-24 12-24 32v81h-56v-82c0-21-7-31-22-31s-24 12-24 32v81z" fill="#ffffff" />
+  <circle cx="403" cy="132" r="26" fill="#10b981" filter="url(#emeraldGlow)" />
+</svg>

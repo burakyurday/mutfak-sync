@@ -1,3 +1,102 @@
-:root{--bg:#f8f9f7;--surface:#fff;--text:#25322d;--muted:#849087;--border:#e8ece7;--soft:#f2f4f0;--accent:#3b725a;--accent-soft:#edf4ec;--accent-border:#dbe8d7;--health:#f1f6ee;color-scheme:light}
-:root[data-theme=dark]{--bg:#141b17;--surface:#1b241e;--text:#e2e9e0;--muted:#98a496;--border:#303d32;--soft:#263128;--accent:#91bb95;--accent-soft:#26382b;--accent-border:#3d5341;--health:#223026;color-scheme:dark}
-@media(prefers-color-scheme:dark){:root[data-theme=system]{--bg:#141b17;--surface:#1b241e;--text:#e2e9e0;--muted:#98a496;--border:#303d32;--soft:#263128;--accent:#91bb95;--accent-soft:#26382b;--accent-border:#3d5341;--health:#223026;color-scheme:dark}}
+/* Mutfak Sync Design Tokens - Inspired by Reference UI */
+:root {
+  --bg: #07090e;
+  --bg-ambient-teal: rgba(16, 185, 129, 0.16);
+  --bg-ambient-amber: rgba(249, 115, 22, 0.14);
+  --bg-ambient-blue: rgba(59, 130, 246, 0.16);
+  --surface: rgba(14, 20, 32, 0.72);
+  --surface-card: rgba(18, 26, 42, 0.65);
+  --surface-card-hover: rgba(26, 38, 62, 0.78);
+  --surface-elevated: rgba(22, 32, 54, 0.92);
+  --text: #f3f4f6;
+  --muted: #94a3b8;
+  --subtle: #64748b;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-glow: rgba(255, 255, 255, 0.16);
+  --border-focus: rgba(56, 189, 248, 0.5);
+  --soft: rgba(255, 255, 255, 0.04);
+  --accent: #38bdf8;
+  --accent-soft: rgba(56, 189, 248, 0.12);
+  --accent-border: rgba(56, 189, 248, 0.28);
+  --health: rgba(16, 185, 129, 0.08);
+  --health-border: rgba(16, 185, 129, 0.25);
+  --health-text: #34d399;
+  --pill-bg: rgba(255, 255, 255, 0.06);
+  --pill-bg-hover: rgba(255, 255, 255, 0.1);
+  --pill-bg-active: rgba(255, 255, 255, 0.16);
+  --pill-border-active: rgba(255, 255, 255, 0.28);
+  --glass-blur: blur(28px) saturate(180%);
+  --modal-backdrop: rgba(3, 6, 12, 0.78);
+  --shadow-card: 0 20px 50px -12px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  --shadow-tile: 0 12px 30px -8px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  --shadow-hero: 0 30px 90px -15px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  color-scheme: dark;
+}
+
+:root[data-theme=dark] {
+  --bg: #07090e;
+  --bg-ambient-teal: rgba(16, 185, 129, 0.16);
+  --bg-ambient-amber: rgba(249, 115, 22, 0.14);
+  --bg-ambient-blue: rgba(59, 130, 246, 0.16);
+  --surface: rgba(14, 20, 32, 0.72);
+  --surface-card: rgba(18, 26, 42, 0.65);
+  --surface-card-hover: rgba(26, 38, 62, 0.78);
+  --surface-elevated: rgba(22, 32, 54, 0.92);
+  --text: #f3f4f6;
+  --muted: #94a3b8;
+  --subtle: #64748b;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-glow: rgba(255, 255, 255, 0.16);
+  --border-focus: rgba(56, 189, 248, 0.5);
+  --soft: rgba(255, 255, 255, 0.04);
+  --accent: #38bdf8;
+  --accent-soft: rgba(56, 189, 248, 0.12);
+  --accent-border: rgba(56, 189, 248, 0.28);
+  --health: rgba(16, 185, 129, 0.08);
+  --health-border: rgba(16, 185, 129, 0.25);
+  --health-text: #34d399;
+  --pill-bg: rgba(255, 255, 255, 0.06);
+  --pill-bg-hover: rgba(255, 255, 255, 0.1);
+  --pill-bg-active: rgba(255, 255, 255, 0.16);
+  --pill-border-active: rgba(255, 255, 255, 0.28);
+  --glass-blur: blur(28px) saturate(180%);
+  --modal-backdrop: rgba(3, 6, 12, 0.78);
+  --shadow-card: 0 20px 50px -12px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  --shadow-tile: 0 12px 30px -8px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  --shadow-hero: 0 30px 90px -15px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  color-scheme: dark;
+}
+
+:root[data-theme=light] {
+  --bg: #f5f7fa;
+  --bg-ambient-teal: rgba(16, 185, 129, 0.08);
+  --bg-ambient-amber: rgba(249, 115, 22, 0.07);
+  --bg-ambient-blue: rgba(59, 130, 246, 0.08);
+  --surface: rgba(255, 255, 255, 0.88);
+  --surface-card: rgba(255, 255, 255, 0.75);
+  --surface-card-hover: rgba(255, 255, 255, 0.95);
+  --surface-elevated: #ffffff;
+  --text: #0f172a;
+  --muted: #64748b;
+  --subtle: #94a3b8;
+  --border: rgba(0, 0, 0, 0.08);
+  --border-glow: rgba(0, 0, 0, 0.14);
+  --border-focus: rgba(14, 165, 233, 0.5);
+  --soft: rgba(0, 0, 0, 0.03);
+  --accent: #0284c7;
+  --accent-soft: rgba(2, 132, 199, 0.1);
+  --accent-border: rgba(2, 132, 199, 0.25);
+  --health: rgba(16, 185, 129, 0.09);
+  --health-border: rgba(16, 185, 129, 0.25);
+  --health-text: #059669;
+  --pill-bg: rgba(0, 0, 0, 0.04);
+  --pill-bg-hover: rgba(0, 0, 0, 0.08);
+  --pill-bg-active: #0f172a;
+  --pill-border-active: #0f172a;
+  --glass-blur: blur(20px) saturate(160%);
+  --modal-backdrop: rgba(15, 23, 42, 0.55);
+  --shadow-card: 0 16px 40px -10px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --shadow-tile: 0 10px 24px -6px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --shadow-hero: 0 25px 70px -15px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 1);
+  color-scheme: light;
+}

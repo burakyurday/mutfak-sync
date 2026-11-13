@@ -494,3 +494,56 @@ fn optional_filter_removes_queued_work_and_can_be_disabled() {
     drain(&mut e);
     assert!(f.remote.join("Burak PC/node_modules/project.js").exists());
 }
+
+#[test]
+fn reset_delays_wakes_delayed_retry_queue() {
+    let f = Fixture::new();
+    f.write("Offline.psd", b"content");
+    let mut e = f.engine("Burak");
+    e.cloud.offline = true;
+    e.scan().unwrap();
+    e.tick().unwrap();
+    let entries = e.db.entries().unwrap();
+    assert_eq!(entries[0].status, "error");
+    let available: i64 =
+        e.db.conn
+            .query_row(
+                "SELECT available FROM upload_queue WHERE path='Offline.psd'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+    assert!(available > 0);
+    e.reset_retry_delays().unwrap();
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64;
+    let new_available: i64 =
+        e.db.conn
+            .query_row(
+                "SELECT available FROM upload_queue WHERE path='Offline.psd'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+    assert!(new_available <= now);
+}
+
+#[test]
+fn clear_all_resets_database_without_deleting_files() {
+    let f = Fixture::new();
+    f.write("Preserved.psd", b"preserve this data");
+    let mut e = f.engine("Burak");
+    e.scan().unwrap();
+    drain(&mut e);
+    assert!(f.remote.join("Burak PC/Preserved.psd").exists());
+    assert!(f.root.join("Preserved.psd").exists());
+
+    e.db.clear_all().unwrap();
+    assert!(e.db.settings().unwrap().is_none());
+    assert!(e.db.entries().unwrap().is_empty());
+    // Local and remote files MUST remain intact
+    assert!(f.root.join("Preserved.psd").exists());
+    assert!(f.remote.join("Burak PC/Preserved.psd").exists());
+}
