@@ -58,7 +58,7 @@ test('Ayarlar ekranında kurulumu sıfırlama açık onay gerektirir',async({pag
   w.isTauri=true;w.testCalls=[];
   w.__TAURI_INTERNALS__={transformCallback:()=>1,invoke:async(name:string,args:any)=>{
    w.testCalls.push({name,args});
-   if(name==='plugin:app|version')return '0.1.4';
+   if(name==='plugin:app|version')return '0.1.5';
    if(name==='snapshot')return {settings,entries:[],activity:[],paused:false,error:null,free_bytes:1234567,device:'test-device',progress:null};
    if(name==='disconnect_account')return null;
    return null;

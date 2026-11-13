@@ -16,17 +16,17 @@ const [platform,exe]=targets[target],stem=`rclone-v${spec.version}-${platform}`,
 const temp=mkdtempSync(join(tmpdir(),'mutfak-sidecar-'));
 const output=resolve('src-tauri/binaries',`rclone-${target}${exe.endsWith('.exe')?'.exe':''}`);
 try{
- execFileSync('curl',['--fail','--location','--silent','--show-error','--max-time','180',`https://github.com/rclone/rclone/releases/download/v${spec.version}/${archive}`,'--output',join(temp,archive)],{stdio:'inherit'});
+ execFileSync('curl',['--fail','--location','--silent','--show-error','--retry','3','--retry-all-errors','--retry-delay','2','--max-time','180',`https://github.com/rclone/rclone/releases/download/v${spec.version}/${archive}`,'--output',join(temp,archive)],{stdio:'inherit'});
  const actual=createHash('sha256').update(readFileSync(join(temp,archive))).digest('hex');
  if(actual!==spec.sha256[archive])throw new Error('Rclone SHA256 doğrulaması başarısız');
  if(process.platform==='win32'){
-  execFileSync('powershell',['-NoProfile','-NonInteractive','-Command','Expand-Archive -LiteralPath $env:MUTFAK_ZIP -DestinationPath $env:MUTFAK_EXTRACT'],{env:{...process.env,MUTFAK_ZIP:join(temp,archive),MUTFAK_EXTRACT:temp},stdio:'inherit'});
+  execFileSync('powershell',['-NoProfile','-NonInteractive','-Command','Expand-Archive -Force -LiteralPath $env:MUTFAK_ZIP -DestinationPath $env:MUTFAK_EXTRACT'],{env:{...process.env,MUTFAK_ZIP:join(temp,archive),MUTFAK_EXTRACT:temp},stdio:'inherit'});
  }else{execFileSync('unzip',['-q',join(temp,archive),'-d',temp]);}
  mkdirSync(resolve('src-tauri/binaries'),{recursive:true});
  copyFileSync(join(temp,stem,exe),output);if(process.platform!=='win32')chmodSync(output,0o755);
  // Retain the upstream license with every distribution.
  mkdirSync('docs/licenses',{recursive:true});
- execFileSync('curl',['--fail','--location','--silent','--show-error',`https://raw.githubusercontent.com/rclone/rclone/v${spec.version}/COPYING`,'--output','docs/licenses/rclone-LICENSE.txt'],{stdio:'inherit'});
+ execFileSync('curl',['--fail','--location','--silent','--show-error','--retry','3','--retry-all-errors','--retry-delay','2',`https://raw.githubusercontent.com/rclone/rclone/v${spec.version}/COPYING`,'--output','docs/licenses/rclone-LICENSE.txt'],{stdio:'inherit'});
  const samePlatform=(process.platform==='linux'&&process.arch==='x64'&&platform==='linux-amd64')||(process.platform==='darwin'&&((process.arch==='arm64'&&platform==='osx-arm64')||(process.arch==='x64'&&platform==='osx-amd64')))||(process.platform==='win32'&&process.arch==='x64'&&platform==='windows-amd64');
  if(samePlatform){const v=execFileSync(output,['version'],{encoding:'utf8'});if(!v.startsWith(`rclone v${spec.version}`))throw new Error('Rclone sürümü uyuşmuyor');console.log(v);}
  console.log(`Doğrulandı: ${output}`);

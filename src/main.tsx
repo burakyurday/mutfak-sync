@@ -116,7 +116,7 @@ function App() {
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'system');
   const [plan, setPlan] = useState<ArchivePlan | null>(null);
   const [disconnectConfirm, setDisconnectConfirm] = useState(false);
-  const [appVersion, setAppVersion] = useState('0.1.4');
+  const [appVersion, setAppVersion] = useState('0.1.5');
   const [updateState, setUpdateState] = useState<UpdateState>({ phase: 'idle' });
 
   const refresh = async () => {
