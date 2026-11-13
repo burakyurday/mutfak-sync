@@ -23,14 +23,6 @@
       "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: data:; connect-src ipc: http://ipc.localhost"
     }
   },
-  "plugins": {
-    "updater": {
-      "endpoints": [
-        "https://github.com/burakyurday/mutfak-sync/releases/latest/download/latest.json"
-      ],
-      "requireSignedVersion": true
-    }
-  },
   "bundle": {
     "active": true,
     "createUpdaterArtifacts": true,

@@ -101,6 +101,8 @@ jobs:
           TAURI_SIGNING_PUBLIC_KEY: ${{ vars.TAURI_SIGNING_PUBLIC_KEY || secrets.TAURI_SIGNING_PUBLIC_KEY }}
         run: |
           set -o pipefail
+          TAURI_CONFIG=$(node -e "process.stdout.write(JSON.stringify({plugins:{updater:{endpoints:['https://github.com/burakyurday/mutfak-sync/releases/latest/download/latest.json'],pubkey:process.env.TAURI_SIGNING_PUBLIC_KEY,requireSignedVersion:true}}}))")
+          export TAURI_CONFIG
           if ! npm run tauri build -- --features desktop --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --ci 2>&1 | tee tauri-build.log; then
             DIAGNOSTIC=$(grep -Ei 'error|failed|invalid|key|password|signature|updater' tauri-build.log | tail -n 8 | tr '\n' ' ')
             echo "::error title=Tauri signed build failed::${DIAGNOSTIC:-Ayrıntılı build logunu açın}"
