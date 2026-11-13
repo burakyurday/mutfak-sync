@@ -199,10 +199,10 @@ async fn disconnect_account(state: State<'_, AppState>) -> std::result::Result<(
         #[cfg(feature = "desktop")]
         {
             if let Ok(entry) = keyring::Entry::new("com.mutfakajans.sync", "rclone-config") {
-                let _ = entry.delete_password();
+                let _ = entry.delete_credential();
             }
             if let Ok(entry) = keyring::Entry::new("com.mutfakajans.sync", "drive-root") {
-                let _ = entry.delete_password();
+                let _ = entry.delete_credential();
             }
         }
 
