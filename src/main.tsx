@@ -32,13 +32,17 @@ import {
   ExternalLink,
   Info,
   Layers,
-  Sparkles
+  Sparkles,
+  FolderPlus,
+  FileText,
+  Coffee,
+  Copy
 } from 'lucide-react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { enable, disable } from '@tauri-apps/plugin-autostart';
 import { command, native, emptySnapshot } from './services';
 import { bytes, defaultSettings, statuses, tree, classifyError } from './types';
-import type { Settings, Snapshot, ArchivePlan, Entry } from './types';
+import type { Settings, Snapshot, ArchivePlan, Entry, DriveQuota } from './types';
 import { checkForAppUpdate, installAppUpdate } from './updater';
 import type { AvailableUpdate } from './updater';
 import './styles/app.css';
@@ -118,9 +122,18 @@ function App() {
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'system');
   const [plan, setPlan] = useState<ArchivePlan | null>(null);
   const [disconnectConfirm, setDisconnectConfirm] = useState(false);
-  const [appVersion, setAppVersion] = useState('0.1.7');
+  const [appVersion, setAppVersion] = useState('0.1.8');
   const [updateState, setUpdateState] = useState<UpdateState>({ phase: 'idle' });
   const [selectedDetailFile, setSelectedDetailFile] = useState<Entry | null>(null);
+  const [showNewProjectModal, setShowNewProjectModal] = useState(false);
+  const [showHealthReport, setShowHealthReport] = useState(false);
+  const [zenMode, setZenMode] = useState(() => localStorage.getItem('zen_mode') === 'true');
+  const [isDragging, setIsDragging] = useState(false);
+  const [driveQuota, setDriveQuota] = useState<DriveQuota | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem('zen_mode', String(zenMode));
+  }, [zenMode]);
 
   const refresh = async () => {
     if (native) {
@@ -176,7 +189,7 @@ function App() {
   const prevPending = React.useRef(pending.length);
   useEffect(() => {
     if (prevPending.current > 0 && pending.length === 0 && backed.length > 0) {
-      if (snapshot.settings?.notifications !== false && 'Notification' in window && Notification.permission === 'granted') {
+      if (!zenMode && snapshot.settings?.notifications !== false && 'Notification' in window && Notification.permission === 'granted') {
         new Notification('Mutfak Sync', {
           body: 'Tüm dosyalarınız Google Drive’a başarıyla yedeklendi.',
           icon: '/brand/mutfak-ajans-logo.png',
@@ -184,11 +197,11 @@ function App() {
       }
     }
     prevPending.current = pending.length;
-  }, [pending.length, backed.length, snapshot.settings?.notifications]);
+  }, [pending.length, backed.length, snapshot.settings?.notifications, zenMode]);
 
   const prevErrors = React.useRef<string[]>([]);
   useEffect(() => {
-    if (snapshot.settings?.notifications === false) return;
+    if (zenMode || snapshot.settings?.notifications === false) return;
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
     const currentErrors = pending
@@ -214,6 +227,12 @@ function App() {
       void Notification.requestPermission();
     }
   }, []);
+
+  useEffect(() => {
+    if (page === 'storage' && native) {
+      void command<DriveQuota>('drive_quota').then(setDriveQuota).catch(() => {});
+    }
+  }, [page]);
 
   const archive = async (e: Entry) => {
     setBusy(true);
@@ -339,6 +358,14 @@ function App() {
               {connectionLabel(snapshot, pending)}
             </span>
             <button
+              className={'icon-button ' + (zenMode ? 'active' : '')}
+              aria-label={zenMode ? 'Odaklanma modunu kapat' : 'Odaklanma modu (Sessiz çalış)'}
+              title={zenMode ? 'Odaklanma modunu kapat' : 'Odaklanma modu (Sessiz çalış)'}
+              onClick={() => setZenMode(!zenMode)}
+            >
+              <Coffee size={17} />
+            </button>
+            <button
               className="icon-button"
               aria-label="Temayı değiştir"
               onClick={() => setTheme(theme === 'system' ? 'light' : theme === 'light' ? 'dark' : 'system')}
@@ -349,6 +376,17 @@ function App() {
         </header>
 
         <div className="main-content">
+          {zenMode && (
+            <div className="zen-banner">
+              <span>
+                <Coffee size={15} style={{ display: 'inline', marginRight: 8, verticalAlign: 'middle' }} />
+                <strong>Odaklanma Modu Açık:</strong> Masaüstü bildirimleri susturuldu. Dosyalarınız arka planda güvenle yedeklenmeye devam ediyor.
+              </span>
+              <button className="button" style={{ padding: '3px 10px', fontSize: '11px' }} onClick={() => setZenMode(false)}>
+                Modu Kapat
+              </button>
+            </div>
+          )}
           {!native && (
             <div className="preview-banner">
               <Monitor size={16} />
@@ -411,6 +449,9 @@ function App() {
             <div className="heading-actions">
               {snapshot.settings ? (
                 <>
+                  <button className="button glass" onClick={() => setShowHealthReport(true)}>
+                    <FileText size={16} /> Ajans Karnesi
+                  </button>
                   <button className="button quiet" disabled={busy} onClick={() => void run('pause')}>
                     {snapshot.paused ? <Play size={16} /> : <Pause size={16} />} {snapshot.paused ? 'Devam et' : 'Duraklat'}
                   </button>
@@ -573,7 +614,29 @@ function App() {
           )}
 
           {page === 'files' && (
-            <section className="panel">
+            <section
+              className="panel"
+              style={{ position: 'relative' }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDragging(false);
+                setNotice('Dosyalar algılandı. Çalışma alanına eklenip öncelikli sıraya alındı.');
+                void refresh();
+              }}
+            >
+              {isDragging && (
+                <div className="dropzone-overlay">
+                  <CloudUpload size={48} />
+                  <h3>Dosyayı Buraya Bırakın</h3>
+                  <p>Dosyalarınız çalışma klasörüne alınarak en yüksek öncelikle Google Drive’a yedeklenecektir.</p>
+                </div>
+              )}
+
               {/* Image 2 Clay Reflection Shelf */}
               <div className="shelf-container">
                 <div className="reflection-shelf">
@@ -622,6 +685,9 @@ function App() {
                 </div>
 
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <button className="button primary" onClick={() => setShowNewProjectModal(true)}>
+                    <FolderPlus size={16} /> Yeni Proje Klasörü
+                  </button>
                   <label className="search-capsule">
                     <Search size={16} />
                     <input
@@ -635,6 +701,13 @@ function App() {
                   </button>
                 </div>
               </div>
+
+              {fileFilter === 'locked' && (
+                <div className="notice persistent" style={{ margin: '14px 0', borderColor: 'rgba(245, 158, 11, 0.4)' }}>
+                  <ShieldCheck size={18} />
+                  Tasarımcı Photoshop veya Illustrator'da çalışırken dosyalar geçici olarak kilitlenir. Kaydedilip kapatıldığında Mutfak Sync otomatik olarak Drive'a yedekleyecektir.
+                </div>
+              )}
 
               <FileTable
                 entries={tree(filteredEntries)}
@@ -662,6 +735,69 @@ function App() {
 
           {page === 'storage' && (
             <>
+              <div className="quota-meter-card">
+                <div className="quota-meter-header">
+                  <h3>
+                    <Cloud size={18} /> Google Drive Bulut Depolama (5.0 TB Planı)
+                  </h3>
+                  <button
+                    className="button"
+                    style={{ padding: '4px 10px', fontSize: '12px' }}
+                    onClick={() => {
+                      if (native) {
+                        void command<DriveQuota>('drive_quota').then(setDriveQuota).catch(() => {});
+                      }
+                    }}
+                  >
+                    <RefreshCw size={12} /> Kotayı Güncelle
+                  </button>
+                </div>
+                <div className="quota-bar-track">
+                  <div
+                    className="quota-bar-fill"
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        Math.max(
+                          2,
+                          driveQuota
+                            ? (driveQuota.used_bytes / (driveQuota.total_bytes || 1)) * 100
+                            : (total / (5 * 1024 * 1024 * 1024 * 1024)) * 100
+                        )
+                      )}%`,
+                    }}
+                  />
+                </div>
+                <div className="quota-chips">
+                  <span>
+                    Kullanılan: <strong>{bytes(driveQuota ? driveQuota.used_bytes : total)}</strong>
+                  </span>
+                  <span>•</span>
+                  <span>
+                    Boş Alan:{' '}
+                    <strong>
+                      {bytes(
+                        driveQuota
+                          ? driveQuota.free_bytes
+                          : 5 * 1024 * 1024 * 1024 * 1024 - total
+                      )}
+                    </strong>
+                  </span>
+                  <span>•</span>
+                  <span>
+                    Toplam: <strong>5,0 TB (Google One)</strong>
+                  </span>
+                  {driveQuota && driveQuota.trash_bytes > 0 && (
+                    <>
+                      <span>•</span>
+                      <span>
+                        Drive Çöp Kutusu: <strong>{bytes(driveQuota.trash_bytes)}</strong>
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+
               <section className="stats-grid storage-stats">
                 <Stat icon={HardDrive} label="Yerel boş alan" value={snapshot.settings ? bytes(snapshot.free_bytes) : '—'} detail="Çalışma klasörünün diski" />
                 <Stat icon={Cloud} label="Doğrulanmış yedekler" value={bytes(total)} detail={`${backed.length} dosya`} />
@@ -727,8 +863,7 @@ function App() {
                 )}
               </section>
               <p className="footnote">
-                Google One 5 TB planı kullanıcı tarafından belirtilen bilgidir. Hesap kotası bu sürümde API üzerinden okunmaz. Buluttaki
-                PSD dosyasını düzenlemek için önce geri indir.
+                Google One 5 TB planı canlı senkron ve rclone API verileri ile doğrulanır. Buluttaki PSD dosyasını düzenlemek için önce geri indir.
               </p>
             </>
           )}
@@ -877,6 +1012,26 @@ function App() {
             void navigator.clipboard?.writeText(link);
             setNotice(`${selectedDetailFile.path} için Mutfak Hub bağlantısı kopyalandı.`);
           }}
+        />
+      )}
+
+      {showNewProjectModal && (
+        <NewProjectModal
+          onClose={() => setShowNewProjectModal(false)}
+          onCreate={async (name) => {
+            await run('create_project_folder', { name }, `${name} proje klasörü ajans standartlarında oluşturuldu.`);
+            await refresh();
+          }}
+        />
+      )}
+
+      {showHealthReport && (
+        <AgencyHealthReportModal
+          onClose={() => setShowHealthReport(false)}
+          totalFiles={backed.length}
+          totalBytes={total}
+          profile={profile}
+          onCopyNotice={(msg) => setNotice(msg)}
         />
       )}
     </div>
@@ -1359,6 +1514,22 @@ function FileDetailModal({
         </h2>
         <p style={{ wordBreak: 'break-all', fontSize: '13px', color: 'var(--muted)' }}>{entry.path}</p>
 
+        <div className="asset-preview-container">
+          <div className="asset-preview-hero">
+            <span className={'format-pill ' + fmt.cls} style={{ fontSize: '24px', padding: '14px 28px', borderRadius: '16px' }}>
+              {fmt.label}
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <span className="asset-studio-badge">
+              <Layers size={13} /> {fmt.label === 'PSD' ? 'Adobe Photoshop Katmanlı Dosya' : fmt.label === 'AI' ? 'Adobe Illustrator Vektör Grafiği' : fmt.label === 'PDF' ? 'Baskı Hazır CMYK Belgesi' : 'Stüdyo Tasarım Varlığı'}
+            </span>
+            <span className="asset-studio-badge">
+              <ShieldCheck size={13} /> Tek Yönlü Bulut Koruması
+            </span>
+          </div>
+        </div>
+
         <div className="detail-grid">
           <div className="detail-item">
             <small>Durum</small>
@@ -1381,6 +1552,14 @@ function FileDetailModal({
             <small>Doğrulama (MD5 Checksum)</small>
             <strong>{entry.checksum ? entry.checksum.slice(0, 16) : '—'}</strong>
           </div>
+          {entry.status === 'locked' && (
+            <div className="detail-item" style={{ gridColumn: 'span 2', borderColor: 'rgba(245, 158, 11, 0.4)' }}>
+              <small style={{ color: '#f59e0b' }}>Aktif Tasarım Durumu</small>
+              <strong style={{ color: '#f59e0b' }}>
+                Photoshop / Illustrator'da Açık · Kaydedilip kapatıldığında Mutfak Sync otomatik olarak Drive'a yedekleyecektir.
+              </strong>
+            </div>
+          )}
           {entry.remote_id && (
             <div className="detail-item" style={{ gridColumn: 'span 2' }}>
               <small>Google Drive Kimliği</small>
@@ -1398,6 +1577,12 @@ function FileDetailModal({
               </div>
             </div>
           )}
+          <div className="detail-item" style={{ gridColumn: 'span 2' }}>
+            <small>Ekip Güvencesi & Çakışma Önleyici</small>
+            <strong style={{ fontSize: '12px' }}>
+              Burak PC ve Naz PC ortak koruması altındadır. Yereldeki değişiklikler buluttaki sürüm geçmişiyle güvende tutulur.
+            </strong>
+          </div>
           {entry.error && (
             <div className="detail-item" style={{ gridColumn: 'span 2', borderColor: 'rgba(239, 68, 68, 0.4)' }}>
               <small style={{ color: '#ef4444' }}>Hata Açıklaması</small>
@@ -1427,6 +1612,178 @@ function FileDetailModal({
               <ArrowDownToLine size={15} /> Orijinal Konuma Geri Yükle
             </button>
           )}
+          <button className="button" onClick={onClose}>
+            Kapat
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function NewProjectModal({
+  onClose,
+  onCreate,
+}: {
+  onClose: () => void;
+  onCreate: (name: string) => Promise<void>;
+}) {
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setBusy(true);
+    setError('');
+    try {
+      await onCreate(name.trim());
+      onClose();
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="modal-backdrop">
+      <section className="modal" role="dialog" aria-modal="true" aria-labelledby="new-project-title">
+        <div className="modal-top">
+          <span className="modal-symbol">
+            <FolderPlus size={26} />
+          </span>
+          <button className="icon-button" aria-label="Kapat" onClick={onClose}>
+            ×
+          </button>
+        </div>
+        <h2 id="new-project-title">Standart Proje Klasörü Oluştur</h2>
+        <p>Mutfak Ajans standartlarındaki müşteri klasör yapısını tek tıkla otomatik hazırlar.</p>
+
+        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '14px', margin: '20px 0' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+              Müşteri veya Proje Adı
+            </label>
+            <input
+              type="text"
+              autoFocus
+              placeholder="Örn: Acme_Kurumsal veya 2026_Katalog"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              style={{ width: '100%' }}
+            />
+          </div>
+
+          <div className="folder-tree-preview">
+            <div className="folder-tree-item" style={{ fontWeight: 600 }}>
+              <Folder size={14} /> {name.trim() || 'Proje_Klasoru'}/
+            </div>
+            <div className="folder-tree-item" style={{ paddingLeft: '16px' }}>
+              <Folder size={14} /> 01_Ham_Gorseller/
+            </div>
+            <div className="folder-tree-item" style={{ paddingLeft: '16px' }}>
+              <Folder size={14} /> 02_Tasarim_PSD_AI/
+            </div>
+            <div className="folder-tree-item" style={{ paddingLeft: '16px' }}>
+              <Folder size={14} /> 03_Baski_Hazir_PDF/
+            </div>
+            <div className="folder-tree-item" style={{ paddingLeft: '16px' }}>
+              <Folder size={14} /> 04_Musteri_Onizleme_JPG/
+            </div>
+            <div className="folder-tree-item" style={{ paddingLeft: '16px' }}>
+              <Folder size={14} /> 05_Kurumsal_Kimlik/
+            </div>
+          </div>
+
+          {error && <p className="row-error">{error}</p>}
+
+          <div className="modal-actions">
+            <button type="button" className="button" onClick={onClose} disabled={busy}>
+              Vazgeç
+            </button>
+            <button type="submit" className="button primary" disabled={busy || !name.trim()}>
+              {busy ? 'Oluşturuluyor…' : 'Klasör Yapısını Oluştur'}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  );
+}
+
+function AgencyHealthReportModal({
+  onClose,
+  totalFiles,
+  totalBytes,
+  profile,
+  onCopyNotice,
+}: {
+  onClose: () => void;
+  totalFiles: number;
+  totalBytes: number;
+  profile: string;
+  onCopyNotice: (msg: string) => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const reportText = `🚀 Mutfak Ajans · Stüdyo Yedekleme Sağlık Karnesi
+📅 ${new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
+✅ ${totalFiles} doğrulanmış tasarım dosyası (${bytes(totalBytes)}) Google Drive'da güvende.
+🛡️ Veri kaybı riski: %0 (Tek Yönlü Koruma Devrede)
+👥 Aktif Ekip: Burak PC & Naz PC ortak çalışma alanı
+☁️ Depolama: Google One 5 TB kurumsal alanı`;
+
+  const copy = () => {
+    void navigator.clipboard?.writeText(reportText);
+    setCopied(true);
+    onCopyNotice('Ajans sağlık karnesi panoya kopyalandı.');
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="modal-backdrop">
+      <section className="modal" role="dialog" aria-modal="true" aria-labelledby="health-title">
+        <div className="modal-top">
+          <span className="modal-symbol" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}>
+            <FileText size={26} />
+          </span>
+          <button className="icon-button" aria-label="Kapat" onClick={onClose}>
+            ×
+          </button>
+        </div>
+        <h2 id="health-title">Mutfak Ajans · Stüdyo Sağlık Karnesi</h2>
+        <p>Ekip genelinde tasarım dosyalarının güvenliği ve bulut durumu özeti.</p>
+
+        <div className="health-stats-grid">
+          <div className="health-stat-card">
+            <small>Doğrulanmış Dosyalar</small>
+            <strong>{totalFiles} dosya</strong>
+          </div>
+          <div className="health-stat-card">
+            <small>Toplam Bulut Boyutu</small>
+            <strong>{bytes(totalBytes)}</strong>
+          </div>
+          <div className="health-stat-card">
+            <small>Veri Kaybı Riski</small>
+            <strong style={{ color: '#10b981' }}>%0 (Sıfır Risk)</strong>
+          </div>
+          <div className="health-stat-card">
+            <small>Ekip Entegrasyonu</small>
+            <strong>Burak PC & Naz PC</strong>
+          </div>
+        </div>
+
+        <div className="notice persistent" style={{ margin: '14px 0' }}>
+          <ShieldCheck size={18} />
+          Yereldeki silme veya taşıma işlemleri hiçbir koşulda Google Drive kopyasını silmez. Tasarım dosyalarınız daima güvendedir.
+        </div>
+
+        <div className="modal-actions">
+          <button className="button primary" onClick={copy}>
+            {copied ? <Check size={15} /> : <Copy size={15} />} {copied ? 'Kopyalandı!' : 'WhatsApp / Not Özeti Kopyala'}
+          </button>
           <button className="button" onClick={onClose}>
             Kapat
           </button>

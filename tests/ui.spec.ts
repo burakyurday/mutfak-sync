@@ -58,7 +58,7 @@ test('Ayarlar ekranında kurulumu sıfırlama açık onay gerektirir',async({pag
   w.isTauri=true;w.testCalls=[];
   w.__TAURI_INTERNALS__={transformCallback:()=>1,invoke:async(name:string,args:any)=>{
    w.testCalls.push({name,args});
-   if(name==='plugin:app|version')return '0.1.7';
+   if(name==='plugin:app|version')return '0.1.8';
    if(name==='snapshot')return {settings,entries:[],activity:[],paused:false,error:null,free_bytes:1234567,device:'test-device',progress:null};
    if(name==='disconnect_account')return null;
    return null;
@@ -114,7 +114,7 @@ test('Mutfak Hub köprüsü, sürüm geçmişi ve bant genişliği kontrolleri �
       transformCallback: () => 1,
       invoke: async (name: string, args: any) => {
         w.testCalls.push({ name, args });
-        if (name === 'plugin:app|version') return '0.1.7';
+        if (name === 'plugin:app|version') return '0.1.8';
         if (name === 'snapshot') return { settings, entries, activity: [], paused: false, error: null, free_bytes: 1234567, device: 'test-device', progress: null };
         if (name === 'file_versions') return [
           { id: 101, path: 'Müşteriler/Logo.ai', remote_path: '.mutfak-versions/Müşteriler/Logo.ai/1', checksum: 'oldchecksum123', created: 1700000000 }
@@ -183,7 +183,7 @@ test('Dosya detay modalı, öncelikli yükleme ve pil/bağlantı tasarrufu ayarl
       transformCallback: () => 1,
       invoke: async (name: string, args: any) => {
         w.testCalls.push({ name, args });
-        if (name === 'plugin:app|version') return '0.1.7';
+        if (name === 'plugin:app|version') return '0.1.8';
         if (name === 'snapshot') return { settings, entries, activity: [], paused: false, error: null, free_bytes: 1234567, device: 'test-device', progress: null };
         if (name === 'prioritize') return null;
         return null;
@@ -211,4 +211,79 @@ test('Dosya detay modalı, öncelikli yükleme ve pil/bağlantı tasarrufu ayarl
   await page.getByText('Gelişmiş ayarlar', { exact: true }).click();
   await expect(page.getByText('Pil tasarrufu modu')).toBeVisible();
   await expect(page.getByText('Tarifeli bağlantı / Mobil veri tasarrufu')).toBeVisible();
+});
+
+test('Yeni Proje Klasörü, Ajans Karnesi, Odaklanma Modu ve Canlı Drive Kota Göstergesi çalışır', async ({ page }) => {
+  await page.addInitScript(() => {
+    const w = window as unknown as Record<string, any>;
+    const settings = {
+      user: 'Burak',
+      root: '/tmp/test-only',
+      folder_id: 'https://drive.google.com/drive/folders/test',
+      mock: false,
+      stability_secs: 30,
+      scan_secs: 600,
+      bandwidth: '',
+      exclude_dev: false,
+      versions: true,
+      battery_saver: false,
+      metered_saver: false,
+    };
+    const entries = [
+      {
+        path: 'Müşteriler/Katalog.psd',
+        kind: 'file',
+        size: 50000000,
+        modified: '1',
+        checksum: 'psdchecksum123456',
+        status: 'backed_up',
+        remote_id: 'remote-1',
+        parent_id: 'root',
+        last_success: 1,
+        retry: 0,
+        error: null,
+      },
+    ];
+    w.isTauri = true;
+    w.testCalls = [];
+    w.__TAURI_INTERNALS__ = {
+      transformCallback: () => 1,
+      invoke: async (name: string, args: any) => {
+        w.testCalls.push({ name, args });
+        if (name === 'plugin:app|version') return '0.1.8';
+        if (name === 'snapshot') return { settings, entries, activity: [], paused: false, error: null, free_bytes: 1234567, device: 'test-device', progress: null };
+        if (name === 'create_project_folder') return ['Acme/01_Ham_Gorseller', 'Acme/02_Tasarim_PSD_AI'];
+        if (name === 'drive_quota') return { total_bytes: 5368709120000, used_bytes: 1500000000000, free_bytes: 3868709120000, trash_bytes: 4200000000 };
+        return null;
+      },
+    };
+  });
+  await page.goto('/');
+
+  // 1. Odaklanma Modu (Zen mode) toggle in header
+  const zenBtn = page.getByTitle('Odaklanma modu (Sessiz çalış)');
+  await expect(zenBtn).toBeVisible();
+  await zenBtn.click();
+  await expect(page.getByText('Odaklanma Modu Açık:', { exact: false })).toBeVisible();
+  await page.getByRole('button', { name: 'Modu Kapat' }).click();
+
+  // 2. Overview - Ajans Karnesi Modal
+  await page.getByRole('button', { name: 'Ajans Karnesi' }).click();
+  await expect(page.getByRole('dialog')).toContainText('Mutfak Ajans · Stüdyo Sağlık Karnesi');
+  await expect(page.getByRole('dialog')).toContainText('Burak PC & Naz PC');
+  await page.getByLabel('Kapat').click();
+
+  // 3. Files - Yeni Proje Klasörü modal
+  await page.getByRole('navigation').getByRole('button', { name: /Dosyalar/ }).click();
+  await page.getByRole('button', { name: 'Yeni Proje Klasörü' }).click();
+  await expect(page.getByRole('dialog')).toContainText('Standart Proje Klasörü Oluştur');
+  await expect(page.getByRole('dialog')).toContainText('01_Ham_Gorseller');
+  await page.getByPlaceholder('Örn: Acme_Kurumsal veya 2026_Katalog').fill('Acme_Proje');
+  await page.getByRole('button', { name: 'Klasör Yapısını Oluştur' }).click();
+  expect(await page.evaluate(() => (window as any).testCalls.some((c: any) => c.name === 'create_project_folder' && c.args.name === 'Acme_Proje'))).toBe(true);
+
+  // 4. Storage - Google Drive Quota Meter
+  await page.getByRole('navigation').getByRole('button', { name: 'Yer Aç', exact: true }).click();
+  await expect(page.getByText('Google Drive Bulut Depolama (5.0 TB Planı)')).toBeVisible();
+  await expect(page.getByText('Drive Çöp Kutusu:', { exact: false })).toBeVisible();
 });

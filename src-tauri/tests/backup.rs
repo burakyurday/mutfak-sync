@@ -617,3 +617,28 @@ fn custom_excludes_and_syncignore_support() {
     assert!(!f.remote.join("Burak PC/custom_skip/skip.bin").exists());
     assert!(!f.remote.join("Burak PC/.syncignore").exists());
 }
+
+#[test]
+fn create_project_folder_creates_standard_scaffolding_and_records_activity() {
+    let f = Fixture::new();
+    let mut e = f.engine("Burak");
+    let paths = e.create_project_folder("Acme_Kurumsal").unwrap();
+    assert_eq!(paths.len(), 5);
+    assert!(f.root.join("Acme_Kurumsal/01_Ham_Gorseller/.keep").exists());
+    assert!(f.root.join("Acme_Kurumsal/02_Tasarim_PSD_AI/.keep").exists());
+    assert!(f.root.join("Acme_Kurumsal/03_Baski_Hazir_PDF/.keep").exists());
+    assert!(f.root.join("Acme_Kurumsal/04_Musteri_Onizleme_JPG/.keep").exists());
+    assert!(f.root.join("Acme_Kurumsal/05_Kurumsal_Kimlik/.keep").exists());
+
+    // Fails on duplicate name safely
+    assert!(e.create_project_folder("Acme_Kurumsal").is_err());
+    // Fails on invalid traversal characters
+    assert!(e.create_project_folder("../escape").is_err());
+    assert!(e.create_project_folder("bad/slash").is_err());
+
+    let activity = e.db.activity_log(10).unwrap();
+    assert!(activity.iter().any(|a| a.message.contains("Acme_Kurumsal")));
+
+    let quota = e.drive_quota().unwrap();
+    assert_eq!(quota.total_bytes, 5 * 1024 * 1024 * 1024 * 1024);
+}

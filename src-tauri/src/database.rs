@@ -48,6 +48,13 @@ impl Default for Settings {
     }
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DriveQuota {
+    pub total_bytes: u64,
+    pub used_bytes: u64,
+    pub free_bytes: u64,
+    pub trash_bytes: u64,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileVersion {
     pub id: i64,
     pub path: String,

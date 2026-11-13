@@ -1,6 +1,6 @@
 use crate::{
     cloud::{CloudProvider, MockCloudProvider, RcloneProvider},
-    database::{Activity, Database, Entry, FileVersion, Settings},
+    database::{Activity, Database, DriveQuota, Entry, FileVersion, Settings},
     engine::{ArchivePlan, Engine},
     security,
 };
@@ -351,6 +351,72 @@ async fn prioritize(path: String, state: State<'_, AppState>) -> std::result::Re
             .as_mut()
             .context("Kurulum gerekli")?
             .prioritize(&path)
+    })
+    .await
+}
+#[tauri::command]
+async fn create_project_folder(
+    name: String,
+    state: State<'_, AppState>,
+) -> std::result::Result<Vec<String>, String> {
+    let s = state.inner().clone();
+    blocking(move || {
+        let mut g = s.core.lock().unwrap();
+        let c = g.as_mut().context("Kurulum gerekli")?;
+        let res = c.create_project_folder(&name)?;
+        s.dirty.store(true, Ordering::Relaxed);
+        s.scan.store(true, Ordering::Relaxed);
+        Ok(res)
+    })
+    .await
+}
+#[tauri::command]
+async fn drive_quota(state: State<'_, AppState>) -> std::result::Result<DriveQuota, String> {
+    let s = state.inner().clone();
+    blocking(move || {
+        let g = s.core.lock().unwrap();
+        let c = g.as_ref().context("Kurulum gerekli")?;
+        if c.settings.mock {
+            return c.drive_quota();
+        }
+        #[cfg(feature = "desktop")]
+        {
+            if let Ok(secret) = security::load_rclone_config() {
+                let temp_cfg = s.data.join(format!("about-{}.conf", uuid::Uuid::new_v4()));
+                if let Ok(mut f) = fs::File::create(&temp_cfg) {
+                    use std::io::Write;
+                    let _ = security::private_file(&temp_cfg);
+                    let _ = f.write_all(secret.as_bytes());
+                    drop(f);
+                    let mut cmd = std::process::Command::new(binary()?);
+                    security::hide_windows_console(&mut cmd);
+                    cmd.args(["about", "mutfak:", "--json", "--config"])
+                        .arg(&temp_cfg)
+                        .stdout(std::process::Stdio::piped())
+                        .stderr(std::process::Stdio::null());
+                    if let Ok(output) = cmd.output() {
+                        let _ = fs::remove_file(&temp_cfg);
+                        if output.status.success() {
+                            if let Ok(val) = serde_json::from_slice::<serde_json::Value>(&output.stdout) {
+                                let total = val.get("total").and_then(|v| v.as_u64()).unwrap_or(5 * 1024 * 1024 * 1024 * 1024);
+                                let used = val.get("used").and_then(|v| v.as_u64()).unwrap_or(0);
+                                let free = val.get("free").and_then(|v| v.as_u64()).unwrap_or_else(|| total.saturating_sub(used));
+                                let trashed = val.get("trashed").and_then(|v| v.as_u64()).unwrap_or(0);
+                                return Ok(DriveQuota {
+                                    total_bytes: total,
+                                    used_bytes: used,
+                                    free_bytes: free,
+                                    trash_bytes: trashed,
+                                });
+                            }
+                        }
+                    } else {
+                        let _ = fs::remove_file(&temp_cfg);
+                    }
+                }
+            }
+        }
+        c.drive_quota()
     })
     .await
 }
@@ -741,6 +807,8 @@ pub fn run() {
             file_versions,
             restore_version,
             prioritize,
+            create_project_folder,
+            drive_quota,
             connect_drive,
             cancel_drive,
             diagnostics,

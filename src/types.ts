@@ -20,6 +20,12 @@ export interface FileVersion {
   checksum: string;
   created: number;
 }
+export interface DriveQuota {
+  total_bytes: number;
+  used_bytes: number;
+  free_bytes: number;
+  trash_bytes: number;
+}
 export interface Entry {path:string;kind:string;size:number;modified:string;checksum:string;status:string;remote_id:string|null;parent_id:string|null;last_success:number|null;retry:number;error:string|null}
 export interface Snapshot {settings:Settings|null;entries:Entry[];activity:{at:number;message:string}[];paused:boolean;error:string|null;free_bytes:number;device:string;progress:{bytes:number;total:number;speed:number}|null}
 export interface ArchivePlan {path:string;size:number;checksum:string;remote_id:string;warning:string}

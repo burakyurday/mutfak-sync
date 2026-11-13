@@ -166,6 +166,24 @@ pub fn clean_bandwidth(value: &str) -> String {
         String::new()
     }
 }
+
+pub fn project_folder_name(name: &str) -> Result<String> {
+    let trimmed = name.trim();
+    if trimmed.is_empty() || trimmed.len() > 80 {
+        bail!("Proje klasörü adı 1 ile 80 karakter arasında olmalıdır");
+    }
+    if trimmed.contains('/') || trimmed.contains('\\') || trimmed.contains("..") || trimmed.contains(':') {
+        bail!("Proje adı yol ayracı veya geçersiz karakter içeremez");
+    }
+    let upper = trimmed.to_ascii_uppercase();
+    if matches!(
+        upper.as_str(),
+        "CON" | "PRN" | "AUX" | "NUL" | "COM1" | "COM2" | "COM3" | "COM4" | "LPT1" | "LPT2"
+    ) {
+        bail!("Geçersiz klasör adı");
+    }
+    Ok(trimmed.to_string())
+}
 pub fn folder_id(value: &str) -> Result<String> {
     let trimmed = value.trim();
     let id = if let Some((_, rest)) = trimmed.split_once("/folders/") {

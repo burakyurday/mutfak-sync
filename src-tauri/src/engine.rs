@@ -1,6 +1,6 @@
 use crate::{
     cloud::CloudProvider,
-    database::{now, Database, Entry, FileVersion, Settings},
+    database::{now, Database, DriveQuota, Entry, FileVersion, Settings},
     security::{checksum, excluded, is_excluded, is_link, safe_path},
 };
 use anyhow::{bail, Context, Result};
@@ -507,6 +507,44 @@ impl<P: CloudProvider> Engine<P> {
         self.db.prioritize(path)?;
         self.db.log(&format!("{path} yükleme sırasında en başa alındı"))?;
         Ok(())
+    }
+    pub fn create_project_folder(&mut self, name: &str) -> Result<Vec<String>> {
+        let folder_name = crate::security::project_folder_name(name)?;
+        let root = Path::new(&self.settings.root).canonicalize()?;
+        let project_dir = root.join(&folder_name);
+        if project_dir.exists() {
+            bail!("Bu isimde bir proje klasörü zaten mevcut: {folder_name}");
+        }
+        fs::create_dir_all(&project_dir)?;
+        let subfolders = [
+            "01_Ham_Gorseller",
+            "02_Tasarim_PSD_AI",
+            "03_Baski_Hazir_PDF",
+            "04_Musteri_Onizleme_JPG",
+            "05_Kurumsal_Kimlik",
+        ];
+        let mut created = Vec::new();
+        for sub in &subfolders {
+            let sub_path = project_dir.join(sub);
+            fs::create_dir_all(&sub_path)?;
+            let keep_file = sub_path.join(".keep");
+            let _ = fs::write(&keep_file, b"");
+            created.push(format!("{folder_name}/{sub}"));
+        }
+        self.db.activity(&format!("Yeni proje klasörü oluşturuldu: {folder_name}"))?;
+        Ok(created)
+    }
+    pub fn drive_quota(&self) -> Result<DriveQuota> {
+        let entries = self.db.entries()?;
+        let used: u64 = entries.iter().filter(|e| e.status == "backed_up").map(|e| e.size).sum();
+        let total = 5 * 1024 * 1024 * 1024 * 1024u64; // 5 TB
+        let free = total.saturating_sub(used);
+        Ok(DriveQuota {
+            total_bytes: total,
+            used_bytes: used,
+            free_bytes: free,
+            trash_bytes: 0,
+        })
     }
     fn requeue_or_restore(&mut self, path: &str) -> Result<()> {
         let m = fs::metadata(safe_path(Path::new(&self.settings.root), path)?)?;
