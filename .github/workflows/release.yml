@@ -1,0 +1,125 @@
+name: Create unsigned preview release
+
+on:
+  push:
+    tags:
+      - 'v*-preview.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version matching package.json and tauri.conf.json
+        required: true
+        default: 0.1.0
+      confirm_unsigned:
+        description: I understand these installers are unsigned test builds
+        required: true
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  verify-input:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      tag: ${{ steps.release.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify version and explicit unsigned confirmation
+        id: release
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          CONFIRM_UNSIGNED: ${{ inputs.confirm_unsigned }}
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            test "${GITHUB_REF_NAME#v}" != "$GITHUB_REF_NAME"
+            RELEASE_VERSION="${GITHUB_REF_NAME#v}"
+            RELEASE_VERSION="${RELEASE_VERSION%%-preview.*}"
+            RELEASE_TAG="$GITHUB_REF_NAME"
+          else
+            test "$CONFIRM_UNSIGNED" = "true"
+            RELEASE_VERSION="$INPUT_VERSION"
+            RELEASE_TAG="v${RELEASE_VERSION}-preview.${GITHUB_RUN_NUMBER}"
+          fi
+          test "$(node -p "require('./package.json').version")" = "$RELEASE_VERSION"
+          test "$(node -p "require('./src-tauri/tauri.conf.json').version")" = "$RELEASE_VERSION"
+          echo "version=$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+
+  package:
+    needs: verify-input
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            target: aarch64-apple-darwin
+            bundles: app,dmg
+          - os: windows-2022
+            target: x86_64-pc-windows-msvc
+            bundles: nsis,msi
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.99.1
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci
+      - run: npm test
+      - run: npm run sidecar -- ${{ matrix.target }}
+      - run: cargo test --manifest-path src-tauri/Cargo.toml --locked
+      - run: npm run tauri build -- --features desktop --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --ci
+      - name: Package macOS files
+        if: runner.os == 'macOS'
+        env:
+          RELEASE_VERSION: ${{ needs.verify-input.outputs.version }}
+        run: |
+          mkdir -p release
+          ditto -c -k --keepParent "src-tauri/target/${{ matrix.target }}/release/bundle" "release/mutfak-sync-${RELEASE_VERSION}-macos-arm64-unsigned.zip"
+          shasum -a 256 release/*.zip > "release/mutfak-sync-${RELEASE_VERSION}-macos-arm64-unsigned.sha256"
+      - name: Package Windows files
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ needs.verify-input.outputs.version }}
+        run: |
+          New-Item -ItemType Directory -Force release | Out-Null
+          Compress-Archive -Path "src-tauri/target/${{ matrix.target }}/release/bundle/*" -DestinationPath "release/mutfak-sync-$env:RELEASE_VERSION-windows-x64-unsigned.zip"
+          $hash = (Get-FileHash "release/mutfak-sync-$env:RELEASE_VERSION-windows-x64-unsigned.zip" -Algorithm SHA256).Hash.ToLower()
+          "$hash  mutfak-sync-$env:RELEASE_VERSION-windows-x64-unsigned.zip" | Set-Content "release/mutfak-sync-$env:RELEASE_VERSION-windows-x64-unsigned.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.target }}
+          path: release/*
+          if-no-files-found: error
+
+  release:
+    needs: [verify-input, package]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: release
+      - name: Create unsigned prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.verify-input.outputs.version }}
+          RELEASE_TAG: ${{ needs.verify-input.outputs.tag }}
+        run: |
+          gh release create "$RELEASE_TAG" release/* \
+            --repo "${{ github.repository }}" \
+            --target "${{ github.sha }}" \
+            --prerelease \
+            --title "Mutfak Sync v${RELEASE_VERSION} — İmzasız deneme sürümü" \
+            --notes "Bu sürüm imzasızdır ve yalnız kontrollü kabul testi içindir. İşletim sistemi güvenlik kontrollerini devre dışı bırakmayın. Önce ayrı bir test klasörü ve Mock sağlayıcı kullanın."

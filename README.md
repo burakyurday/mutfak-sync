@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/burakyurday/mutfak-sync/actions/workflows/build.yml"><img src="https://github.com/burakyurday/mutfak-sync/actions/workflows/build.yml/badge.svg" alt="Test and package"></a>
+  <a href="https://github.com/burakyurday/mutfak-drive-yedekleme/actions/workflows/build.yml"><img src="https://github.com/burakyurday/mutfak-drive-yedekleme/actions/workflows/build.yml/badge.svg" alt="Test and package"></a>
   <img src="https://img.shields.io/badge/status-development%20preview-B7E26E?labelColor=25322D" alt="Development preview">
   <img src="https://img.shields.io/badge/platform-macOS%20ARM64%20%7C%20Windows%20x64-3B725A?labelColor=25322D" alt="Platforms">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-3B725A?labelColor=25322D" alt="MIT license"></a>
@@ -40,17 +40,17 @@
 <sub>Actual React browser preview, captured by Playwright. This is not a native desktop screenshot or a live Drive connection.</sub>
 <!-- preview:end -->
 
-## Mutfak Hub preview
+## Mutfak Hub
 
-The repository also contains the first testable role-based Mutfak Hub slice. `/?hub=team` opens the Mutfak team view; `/?hub=customer` opens the tenant-isolated customer view. These routes are UI prototypes, not production authentication. They validate publication visibility and tenant boundaries before Supabase integration. See the [Mutfak Hub architecture (TR)](docs/HUB_ARCHITECTURE.md).
+Mutfak Hub'ın canlı müşteri alanı `mutfakajans-web` uygulamasında, Neon PostgreSQL üzerinde çalışır. Sync paketi ikinci bir kullanıcı/veritabanı sistemi oluşturmaz; `VITE_MUTFAK_HUB_URL` tanımlandığında `/?hub=live` kullanıcıyı güvenli web Hub'a yönlendirir.
 
-The Supabase-backed application is available at `/?hub=live` when the public URL and anon key are configured. It includes email OTP authentication, RLS tenant isolation, customer/project administration, resumable Drive uploads, controlled publishing, proxied previews and short-lived downloads. Server credentials remain in Edge Function secrets. Deployment still requires a real Supabase project and explicit Google authorization; follow the [Hub deployment guide (TR)](docs/HUB_DEPLOYMENT.md).
+Hub; e-posta magic link oturumu, tenant izolasyonu, kontrollü yayınlama, resumable Drive yükleme ve Cloud Run üzerinden streaming indirme kullanır. Mimari ve yayın öncesi koşullar web deposundaki `docs/MUTFAK_HUB_ARCHITECTURE.md` belgesinde tutulur.
 
 ## Getting started
 
 ### Download a development build
 
-Open the [latest successful packaging workflow](https://github.com/burakyurday/mutfak-sync/actions/runs/43187922980) and locate the platform artifact in **Artifacts**. GitHub login may be required; artifacts expire after 14 days.
+Open the [packaging workflow](https://github.com/burakyurday/mutfak-drive-yedekleme/actions/workflows/build.yml), select the latest successful run and locate the platform artifact in **Artifacts**. GitHub login may be required; artifacts expire after 14 days.
 
 | Platform | Artifact | Package |
 | :--- | :--- | :--- |
@@ -59,13 +59,15 @@ Open the [latest successful packaging workflow](https://github.com/burakyurday/m
 
 These are unsigned development artifacts, not a production release. Do not disable operating-system security protections. Use a separate test folder and the mock provider first. See [validation and distribution limitations](docs/VALIDATION.md).
 
+Maintainers can create a persistent, checksum-bearing unsigned prerelease with the manual **Create unsigned preview release** workflow. It requires an explicit unsigned-build confirmation; code signing and notarization are intentionally not simulated.
+
 ### Build locally
 
 Requires Node.js 24, Rust toolchain from `rust-toolchain.toml` and native build tools. Platform prerequisites and detailed setup are in the [Turkish guide](docs/USER_GUIDE.md).
 
 ```sh
-git clone https://github.com/burakyurday/mutfak-sync.git
-cd mutfak-sync
+git clone https://github.com/burakyurday/mutfak-drive-yedekleme.git
+cd mutfak-drive-yedekleme
 npm ci
 npm run sidecar
 npm run desktop
@@ -112,7 +114,7 @@ The existing CI matrix runs tests and produces unsigned desktop packages on macO
 | [Architecture](docs/ARCHITECTURE.md) | Engine, persistence, security and race-condition boundaries |
 | [Validation](docs/VALIDATION.md) | Tests, evidence and outstanding acceptance checks |
 | [Operations](docs/OPERATIONS.md) | Troubleshooting and operational guidance |
-| [Hub deployment (TR)](docs/HUB_DEPLOYMENT.md) | Supabase, Drive secrets, bootstrap and acceptance checks |
+| [Hub architecture (TR)](docs/HUB_ARCHITECTURE.md) | Neon tabanlı web Hub ile masaüstü Sync arasındaki sınır |
 | [Changelog](CHANGELOG.md) | Version history and release status |
 | [Roadmap](docs/ROADMAP.md) | Release gates and future work |
 | [Security](SECURITY.md) | Vulnerability reporting and safe handling of credentials |

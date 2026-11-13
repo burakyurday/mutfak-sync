@@ -42,31 +42,9 @@ test('archive requires a preview and explicit confirmation in the UI',async({pag
  await page.getByRole('navigation').getByRole('button',{name:'Dosyalar',exact:true}).click();await expect(page.getByText('Müşteriler/Kasım.psd',{exact:true})).toBeVisible();await page.getByRole('button',{name:'Müşteriler klasörü'}).click();await expect(page.getByText('Müşteriler/Kasım.psd',{exact:true})).not.toBeVisible();
 });
 
-test('Hub müşteri görünümü tenant ve yayın sınırlarını korur',async({page})=>{
- await page.goto('/?hub=customer');
- await expect(page.getByRole('heading',{name:'Merhaba, Deniz.'})).toBeVisible();
- await expect(page.getByText('Kasım Story v3.jpg')).toBeVisible();
- await expect(page.getByText('Kampanya Brief.pdf')).toBeVisible();
- await expect(page.getByText('Kasım Story çalışma.psd')).not.toBeVisible();
- await expect(page.getByText('Kış Menü Taslak.ai')).not.toBeVisible();
- await expect(page.getByRole('button',{name:'Müşteriler'})).not.toBeVisible();
- await page.screenshot({path:'artifacts/hub-customer.png',fullPage:true});
-});
-
-test('Hub ekip görünümü bütün müşteri alanlarını gösterir',async({page})=>{
- await page.goto('/?hub=team');
- await expect(page.getByRole('heading',{name:'Günaydın, Burak.'})).toBeVisible();
- await page.getByRole('button',{name:'Dosyalar'}).click();
- await expect(page.getByText('Kasım Story çalışma.psd')).toBeVisible();
- await expect(page.getByText('Kış Menü Taslak.ai')).toBeVisible();
- await page.getByRole('button',{name:'Müşteriler'}).click();
- await expect(page.getByText('Flexi',{exact:true})).toBeVisible();
- await expect(page.getByText('Nova Coffee',{exact:true})).toBeVisible();
- await page.screenshot({path:'artifacts/hub-team.png',fullPage:true});
-});
-
-test('Canlı Hub gizli anahtar istemeden güvenli kurulum durumunu gösterir',async({page})=>{
+test('Canlı Hub masaüstünü ikinci bir veritabanına bağlamaz',async({page})=>{
  await page.goto('/?hub=live');
- await expect(page.getByRole('heading',{name:'Sunucu bağlantısı bekleniyor.'})).toBeVisible();
- await expect(page.getByText('Gizli service-role veya Google anahtarı tarayıcıya eklenmemelidir.')).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Projeler ve dosyalar tek güvenli alanda.'})).toBeVisible();
+ await expect(page.getByText('Neon tabanlı Hub’da çalışır',{exact:false})).toBeVisible();
+ await expect(page.getByText('Hub adresi dağıtım sırasında',{exact:false})).toBeVisible();
 });

@@ -19,3 +19,6 @@ See [validation](docs/VALIDATION.md) and [roadmap](docs/ROADMAP.md).
 ## Unreleased
 
 - Repository product presentation, documentation navigation, contribution/security guidance and browser-preview workflow.
+- Mutfak Hub'ın canlı müşteri alanı Neon tabanlı web uygulamasında birleştirildi; masaüstündeki eski Supabase veri katmanı kaldırıldı.
+- Masaüstüne yalnız yapılandırılmış web Hub adresini açan güvenli portal eklendi; veritabanı ve Google kimlik bilgileri uygulama paketinden çıkarıldı.
+- Açık onay gerektiren manuel, imzasız macOS ARM64 ve Windows x64 prerelease workflow'u ile SHA-256 çıktıları eklendi.

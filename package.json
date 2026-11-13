@@ -11,12 +11,9 @@
     "desktop": "tauri dev --features desktop",
     "test": "vitest run",
     "sidecar": "node scripts/sidecar.mjs",
-    "test:e2e": "playwright test",
-    "test:hub-schema": "bash scripts/test-hub-schema.sh",
-    "test:hub-functions": "docker run --rm -e HUB_DOWNLOAD_SECRET=test-only-secret-with-more-than-32-bytes -v $PWD:/app -w /app denoland/deno:alpine deno test --allow-env supabase/functions/_shared/drive_test.ts"
+    "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.119.0",
     "@tauri-apps/api": "^2.10.0",
     "@tauri-apps/plugin-autostart": "^2.5.0",
     "@tauri-apps/plugin-dialog": "^2.6.0",

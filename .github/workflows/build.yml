@@ -7,12 +7,6 @@ on:
 permissions:
   contents: read
 jobs:
-  hub-schema:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: bash scripts/test-hub-schema.sh
-      - run: docker run --rm -e HUB_DOWNLOAD_SECRET=test-only-secret-with-more-than-32-bytes -v $PWD:/app -w /app denoland/deno:alpine deno test --allow-env supabase/functions/_shared/drive_test.ts
   desktop:
     strategy:
       fail-fast: false
