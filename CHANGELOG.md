@@ -18,6 +18,9 @@ See [validation](docs/VALIDATION.md) and [roadmap](docs/ROADMAP.md).
 
 ## Unreleased
 
+- Tauri'nin zorunlu imza doğrulamasını kullanan uygulama içi kararlı sürüm kontrolü, indirme ilerlemesi, güvenli aktarım duraklatma ve yeniden başlatma akışı eklendi.
+- macOS ARM64 ve Windows x64 updater paketlerini imzalayan, `latest.json` üreten; preview ve kararlı kanalları ayıran release iş akışı eklendi.
+- Yayın anahtarı yönetimi, tek seferlik `0.1.1` bootstrap kurulumu, geri alma ve işletim sistemi imzası sınırları dokümante edildi.
 - Repository product presentation, documentation navigation, contribution/security guidance and browser-preview workflow.
 - Mutfak Hub'ın canlı müşteri alanı Neon tabanlı web uygulamasında birleştirildi; masaüstündeki eski Supabase veri katmanı kaldırıldı.
 - Masaüstüne yalnız yapılandırılmış web Hub adresini açan güvenli portal eklendi; veritabanı ve Google kimlik bilgileri uygulama paketinden çıkarıldı.

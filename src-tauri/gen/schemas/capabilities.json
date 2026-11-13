@@ -1,1 +1,1 @@
-{"main":{"identifier":"main","description":"Yalnızca yerel uygulama penceresi","local":true,"windows":["main"],"permissions":["core:default","dialog:allow-open","autostart:default"]}}
+{"main":{"identifier":"main","description":"Yalnızca yerel uygulama penceresi","local":true,"windows":["main"],"permissions":["core:default","dialog:allow-open","autostart:default","updater:default","process:allow-restart"]}}

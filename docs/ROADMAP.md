@@ -13,7 +13,7 @@
 
 - [ ] Resolve platform acceptance failures and update validation evidence
 - [ ] Signed installers and macOS notarization; verify install/update behavior
-- [ ] Document release checksum, distribution and recovery procedure
+- [x] Document updater signature, release checksum, distribution and recovery procedure
 - [ ] Publish a versioned prerelease or stable release only when its stated scope is verified
 
 ## Future exploration

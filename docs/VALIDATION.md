@@ -1,14 +1,14 @@
 # Doğrulama ve teslim durumu
 
-12 Kasım 2026 · Debian 13 x86_64 bulut ortamı · Node 24.22.1 · Rust 1.99.1 · Rclone 1.76.0.
+13 Kasım 2026 · Debian 13 x86_64 bulut ortamı · Node 24.22.1 · Rust 1.99.1 · Rclone 1.76.0.
 
 ## Çalıştırılmış kontroller
 
 | Kontrol | Sonuç |
 |---|---|
 | `cargo test --manifest-path src-tauri/Cargo.toml --locked` | 24 backup entegrasyon testi + 1 gerçek Rclone local-provider testi geçti. 0 başarısız. |
-| `npm test` | 3 Vitest testi geçti. |
-| `npm run test:e2e` | 5 Chromium/Playwright testi geçti. Sync akışları ve masaüstünün ikinci veritabanına bağlanmadığı Hub geçişi kapsanıyor. Gerçek dış servis testi değildir. |
+| `npm test` | 3 Vitest ve 2 updater manifest testi geçti. İki platform URL/imza eşlemesi ile boş imza reddi kapsanıyor. |
+| `npm run test:e2e` | 5 Chromium/Playwright testi geçti. Sync akışları, güncelleme ayarı ve masaüstünün ikinci veritabanına bağlanmadığı Hub geçişi kapsanıyor. Gerçek dış servis testi değildir. |
 | `npm run build` | TypeScript ve Vite üretim derlemesi geçti. Sync paketi ikinci bir veritabanı istemcisi içermiyor. |
 | Web Hub testleri | Neon tabanlı Hub'ın oturum, dosya görünürlüğü, bilet ve yükleme sınırları `mutfakajans-web` deposunda test edilir. |
 | `cargo check … --features desktop --locked` | Tauri, tray, autostart, keyring ve backend derleme kontrolü geçti. |
@@ -58,6 +58,7 @@ Ek testler: path traversal, sembolik bağlantı, açık arşiv onayı, ikinci ci
 - Mock ve gerçek Rclone provider; güvenli argümanlar; copy/mkdir; boyut/MD5/ID doğrulaması; retry/backoff/jitter; dosya akışı; ayrı WAL okumasıyla bloklanmayan durum görüntüsü.
 - Manuel ve açık onaylı arşivleme, tekrar doğrulama, OS çöp kutusu entegrasyonu, çakışmasız geri yükleme. Linux testleri var; macOS/Windows davranışı doğrulanmalı.
 - Keychain/Credential Manager entegrasyonu, geçici private config, OAuth iptal/timeout/yeniden bağlantı kodu. Gerçek Google akışı henüz test edilmedi.
+- Tauri updater zorunlu imza ve imzalı sürüm doğrulaması, kararlı kanal kontrolü, indirme ilerlemesi, aktif aktarım bitmeden kurulumun reddi ve release manifest üretimi. Gerçek macOS/Windows üzerinde güncelleme kurulumu henüz çalıştırılmadı.
 - Tray menüsü, pencere kapanınca gizleme, autostart plugin'i, tek instance kilidi, ayarlar ve güvenli tanılama.
 - Doğru mimari sidecar indirme script'i, kilit dosyaları, macOS ARM64/Windows x64 build matrix, kurulum ve güvenlik belgeleri.
 
@@ -66,7 +67,7 @@ Ek testler: path traversal, sembolik bağlantı, açık arşiv onayı, ikinci ci
 - GitHub Actions [workflow #2](https://github.com/burakyurday/mutfak-drive-yedekleme/actions/runs/43184830587) `.app`/`.dmg` ve `.exe`/`.msi` içeren imzasız artifact'ları üretti. Paketler henüz gerçek M1 Mac ve Windows bilgisayarına kurulup açılmadı; tray/autostart, OS kasası, Google OAuth ve çöp kutusu kabul testleri gerekir. Bunlar geçmeden dağıtıma hazır denemez.
 - Gerçek Google OAuth, token yenileme, büyük dosyada ağ kopması, kota/rate-limit/permission ve Shared Drive kabul testleri çalıştırılmadı. Hatalar şu anda güvenli genel mesajla gösterilir, ayrı hata sınıflandırması yoktur.
 - Code signing/notarization yoktur; CI tanımı imzasız artifact üretmek içindir. Güvenlik kontrollerini kapatma talimatı yoktur.
-- Manuel `release.yml` iş akışı açık imzasız-sürüm onayı ister, her platform ZIP'i için SHA-256 üretir ve yalnız prerelease oluşturur. Gerçek release çalıştırılmadı.
+- `release.yml` özel updater anahtarı olmadan yayın yapmaz; iki platform paketini imzalar, SHA-256 ve `latest.json` üretir. Preview yayınları otomatik kanala girmez. GitHub Secrets/Variable henüz yönetici tarafından tanımlanmadığı için updater özellikli `0.1.1` release'i oluşturulmadı ve gerçek update kurulumu çalıştırılmadı.
 - Profil, kök ve hedef değişikliği/migrasyonu engellidir. Aynı klasöre yeniden OAuth yapılabilir; uygulama içi hesap bağlantısını tamamen kaldırma ekranı yoktur. Google izin ekranından erişim iptal edilebilir.
 - Sürüm arşivi çalışır; son 5 sürüm/30 gün politikası, geçmiş sürümleri UI'da listeleme/geri yükleme ve manuel uzak geçmiş yönetimi yoktur. Otomatik uzak temizleme yapılmaz.
 - Bildirimler, özel kullanıcı filtreleri ve eşzamanlı aktarım sayısı ayarı yoktur; güvenilir ve düşük bellekli tek aktarım kullanılır. Tray simgesi durum animasyonu yoktur.

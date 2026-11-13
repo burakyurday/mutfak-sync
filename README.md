@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/burakyurday/mutfak-drive-yedekleme/actions/workflows/build.yml"><img src="https://github.com/burakyurday/mutfak-drive-yedekleme/actions/workflows/build.yml/badge.svg" alt="Test and package"></a>
+  <a href="https://github.com/burakyurday/mutfak-sync/actions/workflows/build.yml"><img src="https://github.com/burakyurday/mutfak-sync/actions/workflows/build.yml/badge.svg" alt="Test and package"></a>
   <img src="https://img.shields.io/badge/status-development%20preview-B7E26E?labelColor=25322D" alt="Development preview">
   <img src="https://img.shields.io/badge/platform-macOS%20ARM64%20%7C%20Windows%20x64-3B725A?labelColor=25322D" alt="Platforms">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-3B725A?labelColor=25322D" alt="MIT license"></a>
@@ -17,7 +17,7 @@
 
 **Mutfak Sync is a one-way desktop backup application for creative teams.** Built for Mutfak Ajans, it preserves local project folders in Google Drive, keeps each workstation in its own destination, and protects cloud copies from local deletion.
 
-> **Development preview (v0.1.0).** The core and UI have automated test coverage; macOS ARM64 and Windows x64 installer builds have passed CI. Real Google OAuth and native platform acceptance tests are not complete. Do not rely on this version as the sole copy of important files.
+> **Development preview (v0.1.1).** The core and UI have automated test coverage; macOS ARM64 and Windows x64 installer builds have passed CI. Real Google OAuth and native platform acceptance tests are not complete. Do not rely on this version as the sole copy of important files.
 
 | Capability | What it does |
 | :--- | :--- |
@@ -50,7 +50,7 @@ Hub; e-posta magic link oturumu, tenant izolasyonu, kontrollü yayınlama, resum
 
 ### Download a development build
 
-Open the [packaging workflow](https://github.com/burakyurday/mutfak-drive-yedekleme/actions/workflows/build.yml), select the latest successful run and locate the platform artifact in **Artifacts**. GitHub login may be required; artifacts expire after 14 days.
+Open the [packaging workflow](https://github.com/burakyurday/mutfak-sync/actions/workflows/build.yml), select the latest successful run and locate the platform artifact in **Artifacts**. GitHub login may be required; artifacts expire after 14 days.
 
 | Platform | Artifact | Package |
 | :--- | :--- | :--- |
@@ -59,15 +59,15 @@ Open the [packaging workflow](https://github.com/burakyurday/mutfak-drive-yedekl
 
 These are unsigned development artifacts, not a production release. Do not disable operating-system security protections. Use a separate test folder and the mock provider first. See [validation and distribution limitations](docs/VALIDATION.md).
 
-Maintainers can create a persistent, checksum-bearing unsigned prerelease with the manual **Create unsigned preview release** workflow. It requires an explicit unsigned-build confirmation; code signing and notarization are intentionally not simulated.
+Maintainers can create a persistent, checksum-bearing prerelease with the **Create desktop release** workflow. Updater packages require the private release key and are cryptographically verified by the app; operating-system code signing and notarization remain separate. See the [secure update guide](docs/UPDATES.md).
 
 ### Build locally
 
 Requires Node.js 24, Rust toolchain from `rust-toolchain.toml` and native build tools. Platform prerequisites and detailed setup are in the [Turkish guide](docs/USER_GUIDE.md).
 
 ```sh
-git clone https://github.com/burakyurday/mutfak-drive-yedekleme.git
-cd mutfak-drive-yedekleme
+git clone https://github.com/burakyurday/mutfak-sync.git
+cd mutfak-sync
 npm ci
 npm run sidecar
 npm run desktop
@@ -114,6 +114,7 @@ The existing CI matrix runs tests and produces unsigned desktop packages on macO
 | [Architecture](docs/ARCHITECTURE.md) | Engine, persistence, security and race-condition boundaries |
 | [Validation](docs/VALIDATION.md) | Tests, evidence and outstanding acceptance checks |
 | [Operations](docs/OPERATIONS.md) | Troubleshooting and operational guidance |
+| [Updates (TR)](docs/UPDATES.md) | Updater signing keys, release channel and recovery procedure |
 | [Hub architecture (TR)](docs/HUB_ARCHITECTURE.md) | Neon tabanlı web Hub ile masaüstü Sync arasındaki sınır |
 | [Changelog](CHANGELOG.md) | Version history and release status |
 | [Roadmap](docs/ROADMAP.md) | Release gates and future work |

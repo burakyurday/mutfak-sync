@@ -187,6 +187,30 @@ async fn pause(state: State<'_, AppState>) -> std::result::Result<(), String> {
     Ok(())
 }
 #[tauri::command]
+async fn prepare_update(state: State<'_, AppState>) -> std::result::Result<bool, String> {
+    let s = state.inner().clone();
+    blocking(move || {
+        // Waiting for the engine lock lets an in-flight provider operation finish first.
+        let guard = s.core.lock().unwrap();
+        if guard.as_ref().is_some_and(|core| {
+            core.db
+                .entries()
+                .unwrap_or_default()
+                .iter()
+                .any(|entry| entry.status == "uploading")
+        }) {
+            bail!("Aktif yükleme tamamlanmadan güncelleme kurulamaz")
+        }
+        Ok(s.paused.swap(true, Ordering::SeqCst))
+    })
+    .await
+}
+#[tauri::command]
+async fn resume_after_failed_update(state: State<'_, AppState>) -> std::result::Result<(), String> {
+    state.paused.store(false, Ordering::SeqCst);
+    Ok(())
+}
+#[tauri::command]
 async fn archive_plan(
     path: String,
     state: State<'_, AppState>,
@@ -458,13 +482,23 @@ fn background(s: AppState) {
     });
 }
 pub fn run() {
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
-        ))
+        ));
+    if let Some(public_key) = option_env!("TAURI_SIGNING_PUBLIC_KEY").filter(|key| !key.is_empty())
+    {
+        builder = builder.plugin(
+            tauri_plugin_updater::Builder::new()
+                .pubkey(public_key)
+                .build(),
+        );
+    }
+    builder
         .setup(|app| {
             let data = app.path().app_data_dir()?;
             fs::create_dir_all(&data)?;
@@ -581,6 +615,8 @@ pub fn run() {
             configure,
             backup_now,
             pause,
+            prepare_update,
+            resume_after_failed_update,
             archive_plan,
             archive_file,
             restore,

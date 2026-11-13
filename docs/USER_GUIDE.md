@@ -2,7 +2,7 @@
 
 Mutfak Ajans için Türkçe, tek yönlü masaüstü yedekleme uygulaması. Tauri 2, Rust, React, TypeScript, SQLite ve paketlenmiş Rclone kullanır. Burak → `Mutfak Ajans/Burak PC`, Naz → `Mutfak Ajans/Naz PC`. Dosya hiyerarşisi ve boş klasörler korunur; yerel kök ikinci kez eklenmez. Yerel silme bulut kopyasını silmez.
 
-**Durum: 0.1.0 geliştirme ön sürümü. Üretime hazır olarak değerlendirmeyin.** Test edilmiş çekirdek ve arayüz mevcuttur. GitHub Actions macOS ARM64 ve Windows x64 için imzasız kurulum artifact'larını başarıyla üretti. Gerçek Google hesabı, macOS/Windows çöp kutusu, otomatik başlatma ve imzalı kurulumlar henüz uçtan uca doğrulanmadı. Tam liste: [Doğrulama ve sınırlar](VALIDATION.md).
+**Durum: 0.1.1 geliştirme ön sürümü. Üretime hazır olarak değerlendirmeyin.** Test edilmiş çekirdek ve arayüz mevcuttur. GitHub Actions macOS ARM64 ve Windows x64 için imzasız işletim sistemi kurulum artifact'larını başarıyla üretti. Gerçek Google hesabı, macOS/Windows çöp kutusu, otomatik başlatma ve platform imzalı kurulumlar henüz uçtan uca doğrulanmadı. Tam liste: [Doğrulama ve sınırlar](VALIDATION.md).
 
 ## Geliştirme
 
@@ -44,6 +44,7 @@ OAuth için `drive` kapsamı hesap dosyalarına geniş erişim sağlar. `root_fo
 - Aktivite: zaman damgalı son 100 işlem. Kayıtlar yereldir, son 1000 işlem saklanır.
 - Depolama: büyük dosyalar, arşivleme önizlemesi, açık onay ve orijinal yola geri yükleme. Çöp kutusu boşaltılmadan disk alanı boşalmayabilir. Buluttaki PSD'yi düzenlemek için önce yerel diske indirin; uygulama sanal disk/scratch disk değildir.
 - Ayarlar: tarama aralığı, hız sınırı (`10M` gibi), isteğe bağlı geliştirici filtreleri, önceki sürümü koruma, autostart, tema, OAuth yeniden bağlantı ve hassas bilgi içermeyen tanılama raporu.
+- Güncelleme: uygulama kararlı ve imzalı sürümleri otomatik kontrol eder. Aktif dosya aktarımı varken kurulum başlamaz. `0.1.0-preview.1` kullananların güncelleyicili ilk sürümü bir kez elle kurması gerekir; ayrıntılar [güncelleme rehberindedir](UPDATES.md).
 - Pencereyi kapatmak uygulamayı tray'e gizler. Gerçek çıkış tray → Çıkış ile yapılır. Duraklatma mevcut alt süreci kesmez; sonraki aktarımı durdurur.
 
 Kuyruk çökme/yeniden başlatmadan sonra korunur. Açılışta ve her 10 dakikada uzlaştırma, dosya olaylarından 2 sn sonra birleştirilmiş yerel tarama yapılır. Uyku sırasında çalışmaz; uyandıktan sonra işçi devam eder ve geçen aralığa göre tarar. Açılışta çevrimdışıysa 30 sn arayla provider tekrar kurulur. API rate limit/kota/ağ/izin hatalarında dosyalar korunur ve üstel gecikmeyle tekrar denenir. Bu sürüm bu hata türlerini kullanıcıya ayrı sınıflandırmaz.
@@ -89,7 +90,7 @@ npm run sidecar -- x86_64-pc-windows-msvc
 npm run tauri build -- --features desktop --target x86_64-pc-windows-msvc --bundles nsis,msi --ci
 ```
 
-Çıktılar: `src-tauri/target/<target>/release/bundle/{macos,dmg,nsis,msi}/`. [GitHub Actions](../.github/workflows/build.yml) her platformda test, SHA-256 doğrulanmış doğru sidecar ve installer üretimi için tanımlıdır. Başarılı çalışmada `mutfak-sync-aarch64-apple-darwin-unsigned` ve `mutfak-sync-x86_64-pc-windows-msvc-unsigned` artifact'ları oluşur. GitHub oturumuyla [iş akışı sayfasındaki](https://github.com/burakyurday/mutfak-drive-yedekleme/actions/workflows/build.yml) son başarılı çalışmanın Artifacts bölümünden indirilebilir.
+Çıktılar: `src-tauri/target/<target>/release/bundle/{macos,dmg,nsis,msi}/`. [GitHub Actions](../.github/workflows/build.yml) her platformda test, SHA-256 doğrulanmış doğru sidecar ve installer üretimi için tanımlıdır. Başarılı çalışmada `mutfak-sync-aarch64-apple-darwin-unsigned` ve `mutfak-sync-x86_64-pc-windows-msvc-unsigned` artifact'ları oluşur. GitHub oturumuyla [iş akışı sayfasındaki](https://github.com/burakyurday/mutfak-sync/actions/workflows/build.yml) son başarılı çalışmanın Artifacts bölümünden indirilebilir.
 
 İmzalama sertifikası ayarlanmadığından CI çıktıları **imzasızdır**. macOS dağıtımı için Apple Developer üyeliği, Developer ID Application, codesign ve notarization/stapling gerekir. Windows güvenilir dağıtımı için Authenticode imzası ve SmartScreen itibarı gerekir. OS güvenlik kontrollerini kapatmayın. İmzasız ön sürümü yalnızca doğrulanmış kaynak ve hash ile kontrollü testte kullanın; son kullanıcılara dağıtım için imzalama sürecini tamamlayın.
 
@@ -98,4 +99,5 @@ npm run tauri build -- --features desktop --target x86_64-pc-windows-msvc --bund
 - [Mimari ve güvenlik](ARCHITECTURE.md)
 - [Test sonuçları, eksikler ve teslim durumu](VALIDATION.md)
 - [İşletim ve sorun giderme](OPERATIONS.md)
+- [Güvenli uygulama güncellemeleri](UPDATES.md)
 - Marka varlıkları: `public/brand/mark.svg`, `src/styles/tokens.css`; sonradan ajans logosuyla değiştirilebilir.

@@ -1,7 +1,7 @@
 {
   "name": "mutfak-sync",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
@@ -9,7 +9,7 @@
     "preview": "vite preview --host 127.0.0.1",
     "tauri": "tauri",
     "desktop": "tauri dev --features desktop",
-    "test": "vitest run",
+    "test": "vitest run && node --test scripts/create-update-manifest.test.mjs",
     "sidecar": "node scripts/sidecar.mjs",
     "test:e2e": "playwright test"
   },
@@ -17,6 +17,8 @@
     "@tauri-apps/api": "^2.10.0",
     "@tauri-apps/plugin-autostart": "^2.5.0",
     "@tauri-apps/plugin-dialog": "^2.6.0",
+    "@tauri-apps/plugin-process": "^2.4.0",
+    "@tauri-apps/plugin-updater": "^2.14.1",
     "lucide-react": "^0.577.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"

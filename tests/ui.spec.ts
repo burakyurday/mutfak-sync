@@ -28,6 +28,7 @@ test('archive requires a preview and explicit confirmation in the UI',async({pag
   w.isTauri=true;w.testCalls=[];
   w.__TAURI_INTERNALS__={transformCallback:()=>1,invoke:async(name:string,args:any)=>{
    w.testCalls.push({name,args});
+   if(name==='plugin:app|version')return '0.1.1';
    if(name==='snapshot')return {settings,entries,activity:[],paused:false,error:null,free_bytes:1234567,device:'test-device',progress:null};
    if(name==='archive_plan')return {path:'Müşteriler/Kasım.psd',size:1024,checksum:'verified',remote_id:'test-id',warning:'Çöp kutusu boşaltılana kadar alan boşalmayabilir.'};
    if(name==='archive_file')entries[1].status='cloud_only';
@@ -40,6 +41,7 @@ test('archive requires a preview and explicit confirmation in the UI',async({pag
  await page.getByRole('button',{name:'Buluta arşivle ve yer aç'}).click();await page.getByRole('button',{name:'Onaylıyorum, çöp kutusuna taşı'}).click();await expect(page.getByRole('button',{name:'Geri yükle',exact:true})).toBeVisible();
  expect(await page.evaluate(()=>(window as any).testCalls.find((c:any)=>c.name==='archive_file').args.confirmed)).toBe(true);
  await page.getByRole('navigation').getByRole('button',{name:'Dosyalar',exact:true}).click();await expect(page.getByText('Müşteriler/Kasım.psd',{exact:true})).toBeVisible();await page.getByRole('button',{name:'Müşteriler klasörü'}).click();await expect(page.getByText('Müşteriler/Kasım.psd',{exact:true})).not.toBeVisible();
+ await page.getByRole('navigation').getByRole('button',{name:'Ayarlar',exact:true}).click();await expect(page.getByText('Yazılım güncellemesi · v0.1.1',{exact:true})).toBeVisible();
 });
 
 test('Canlı Hub masaüstünü ikinci bir veritabanına bağlamaz',async({page})=>{
