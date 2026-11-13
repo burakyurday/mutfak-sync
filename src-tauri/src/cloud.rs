@@ -136,10 +136,7 @@ impl RcloneProvider {
         #[cfg(feature = "desktop")]
         let config = {
             use std::io::Write;
-            let entry = keyring::Entry::new("com.mutfakajans.sync", "rclone-config")?;
-            let secret = entry
-                .get_password()
-                .context("Google bağlantısı güvenli kasada bulunamadı")?;
+            let secret = crate::security::load_rclone_config()?;
             let path = self
                 .work
                 .join(format!("session-{}.conf", uuid::Uuid::new_v4()));
@@ -265,8 +262,7 @@ impl RcloneProvider {
         {
             let persist = (|| -> Result<()> {
                 let refreshed = fs::read_to_string(&config)?;
-                keyring::Entry::new("com.mutfakajans.sync", "rclone-config")?
-                    .set_password(&refreshed)?;
+                crate::security::save_rclone_config(&refreshed)?;
                 Ok(())
             })();
             let _ = fs::remove_file(&config);

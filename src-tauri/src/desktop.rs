@@ -198,9 +198,7 @@ async fn disconnect_account(state: State<'_, AppState>) -> std::result::Result<(
 
         #[cfg(feature = "desktop")]
         {
-            if let Ok(entry) = keyring::Entry::new("com.mutfakajans.sync", "rclone-config") {
-                let _ = entry.delete_credential();
-            }
+            security::delete_rclone_config();
             if let Ok(entry) = keyring::Entry::new("com.mutfakajans.sync", "drive-root") {
                 let _ = entry.delete_credential();
             }
@@ -384,9 +382,7 @@ async fn connect_drive(
             if !text.contains("token =") {
                 bail!("OAuth token alınamadı")
             }
-            keyring::Entry::new("com.mutfakajans.sync", "rclone-config")?
-                .set_password(&text)
-                .context("İşletim sistemi güvenli kasasına kayıt başarısız")?;
+            security::save_rclone_config(&text)?;
             keyring::Entry::new("com.mutfakajans.sync", "drive-root")?.set_password(&id)?;
             Ok(())
         })();

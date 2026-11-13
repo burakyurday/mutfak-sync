@@ -118,10 +118,11 @@ pub fn excluded(rel: &str, optional: bool) -> bool {
     })
 }
 pub fn folder_id(value: &str) -> Result<String> {
-    let id = if let Some((_, rest)) = value.split_once("/folders/") {
-        rest.split(['?', '#', '/']).next().unwrap_or("")
+    let trimmed = value.trim();
+    let id = if let Some((_, rest)) = trimmed.split_once("/folders/") {
+        rest.split(['?', '#', '/']).next().unwrap_or("").trim()
     } else {
-        value
+        trimmed
     };
     if id.len() < 10
         || !id
@@ -131,4 +132,75 @@ pub fn folder_id(value: &str) -> Result<String> {
         bail!("Geçerli bir Google Drive klasör ID veya paylaşım bağlantısı girin");
     }
     Ok(id.to_owned())
+}
+
+#[cfg(feature = "desktop")]
+pub fn save_rclone_config(text: &str) -> Result<()> {
+    const CHUNK_SIZE: usize = 200;
+    let chars: Vec<char> = text.chars().collect();
+    let chunks: Vec<String> = chars
+        .chunks(CHUNK_SIZE)
+        .map(|c| c.iter().collect::<String>())
+        .collect();
+    for (i, chunk) in chunks.iter().enumerate() {
+        keyring::Entry::new("com.mutfakajans.sync", &format!("rclone-config-{i}"))?
+            .set_password(chunk)
+            .context("İşletim sistemi güvenli kasasına kayıt başarısız")?;
+    }
+    keyring::Entry::new("com.mutfakajans.sync", "rclone-config-count")?
+        .set_password(&chunks.len().to_string())
+        .context("İşletim sistemi güvenli kasasına kayıt başarısız")?;
+    for i in chunks.len()..(chunks.len() + 10) {
+        if let Ok(entry) =
+            keyring::Entry::new("com.mutfakajans.sync", &format!("rclone-config-{i}"))
+        {
+            let _ = entry.delete_credential();
+        }
+    }
+    Ok(())
+}
+
+#[cfg(feature = "desktop")]
+pub fn load_rclone_config() -> Result<String> {
+    if let Ok(count_entry) = keyring::Entry::new("com.mutfakajans.sync", "rclone-config-count") {
+        if let Ok(count_str) = count_entry.get_password() {
+            if let Ok(count) = count_str.parse::<usize>() {
+                let mut combined = String::new();
+                for i in 0..count {
+                    let entry =
+                        keyring::Entry::new("com.mutfakajans.sync", &format!("rclone-config-{i}"))?;
+                    let part = entry
+                        .get_password()
+                        .context("Google bağlantı parçası güvenli kasada bulunamadı")?;
+                    combined.push_str(&part);
+                }
+                return Ok(combined);
+            }
+        }
+    }
+    let entry = keyring::Entry::new("com.mutfakajans.sync", "rclone-config")?;
+    entry
+        .get_password()
+        .context("Google bağlantısı güvenli kasada bulunamadı")
+}
+
+#[cfg(feature = "desktop")]
+pub fn delete_rclone_config() {
+    if let Ok(count_entry) = keyring::Entry::new("com.mutfakajans.sync", "rclone-config-count") {
+        if let Ok(count_str) = count_entry.get_password() {
+            if let Ok(count) = count_str.parse::<usize>() {
+                for i in 0..count {
+                    if let Ok(entry) =
+                        keyring::Entry::new("com.mutfakajans.sync", &format!("rclone-config-{i}"))
+                    {
+                        let _ = entry.delete_credential();
+                    }
+                }
+            }
+        }
+        let _ = count_entry.delete_credential();
+    }
+    if let Ok(entry) = keyring::Entry::new("com.mutfakajans.sync", "rclone-config") {
+        let _ = entry.delete_credential();
+    }
 }
