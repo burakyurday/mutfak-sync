@@ -1,7 +1,7 @@
 use crate::{
     cloud::CloudProvider,
-    database::{now, Database, Entry, Settings},
-    security::{checksum, excluded, is_link, safe_path},
+    database::{now, Database, Entry, FileVersion, Settings},
+    security::{checksum, excluded, is_excluded, is_link, safe_path},
 };
 use anyhow::{bail, Context, Result};
 use rusqlite::params;
@@ -51,6 +51,13 @@ impl<P: CloudProvider> Engine<P> {
         let previous = self.db.entries()?;
         let by_path: std::collections::HashMap<&str, &Entry> =
             previous.iter().map(|e| (e.path.as_str(), e)).collect();
+        let mut custom_excludes = self.settings.custom_excludes.clone();
+        if let Ok(ignore) = fs::read_to_string(root.join(".syncignore")) {
+            if !custom_excludes.is_empty() {
+                custom_excludes.push('\n');
+            }
+            custom_excludes.push_str(&ignore);
+        }
         let mut cloud_error = None;
         for item in WalkDir::new(&root)
             .follow_links(false)
@@ -58,13 +65,14 @@ impl<P: CloudProvider> Engine<P> {
             .filter_entry(|e| {
                 e.path() == root
                     || (e.metadata().map(|m| !is_link(&m)).unwrap_or(false)
-                        && !excluded(
+                        && !is_excluded(
                             &e.path()
                                 .strip_prefix(&root)
                                 .unwrap_or(e.path())
                                 .to_string_lossy()
                                 .replace('\\', "/"),
                             self.settings.exclude_dev,
+                            &custom_excludes,
                         ))
             })
         {
@@ -127,7 +135,7 @@ impl<P: CloudProvider> Engine<P> {
         }
         // Local deletion never invokes a cloud mutation.
         for old in previous {
-            if excluded(&old.path, self.settings.exclude_dev) {
+            if is_excluded(&old.path, self.settings.exclude_dev, &custom_excludes) {
                 self.db.conn.execute(
                     "UPDATE file_manifest SET status='excluded' WHERE path=?1",
                     [&old.path],
@@ -448,6 +456,56 @@ impl<P: CloudProvider> Engine<P> {
         self.requeue_or_restore(path)?;
         self.db
             .log(&format!("{path} orijinal konumuna geri yüklendi"))?;
+        Ok(())
+    }
+    pub fn list_versions(&self, path: &str) -> Result<Vec<FileVersion>> {
+        crate::security::relative(path)?;
+        self.db.file_versions(path)
+    }
+    pub fn restore_version(&mut self, path: &str, version_id: i64) -> Result<()> {
+        crate::security::relative(path)?;
+        let (remote_path, expected_checksum): (String, String) = self
+            .db
+            .conn
+            .query_row(
+                "SELECT remote_path, checksum FROM file_versions WHERE id=?1 AND path=?2",
+                params![version_id, path],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .context("Sürüm kaydı bulunamadı")?;
+
+        let dest = safe_path(Path::new(&self.settings.root), path)?;
+        if dest.exists() {
+            bail!("Yerel dosya var; üzerine yazılmaz. Sürümü geri yüklemek için lütfen mevcut yerel dosyayı yeniden adlandırın veya taşıyın.")
+        }
+        fs::create_dir_all(dest.parent().context("Üst klasör yok")?)?;
+        let temp = dest.with_file_name(format!("{}.mutfak-part", uuid::Uuid::new_v4()));
+        let result = (|| -> Result<()> {
+            self.cloud.download(&remote_path, &temp)?;
+            if checksum(&temp)? != expected_checksum {
+                bail!("İndirilen sürüm checksum doğrulaması başarısız")
+            }
+            fs::hard_link(&temp, &dest)?;
+            Ok(())
+        })();
+        let _ = fs::remove_file(&temp);
+        result?;
+        let m = fs::metadata(&dest)?;
+        let tx = self.db.conn.transaction()?;
+        tx.execute(
+            "UPDATE file_manifest SET status='backed_up',size=?2,modified=?3,checksum=?4 WHERE path=?1",
+            params![path, m.len() as i64, stamp(&m)?, expected_checksum],
+        )?;
+        tx.execute("DELETE FROM archived_files WHERE path=?1", [path])?;
+        tx.commit()?;
+        self.db
+            .log(&format!("{path} geçmiş sürüme ({remote_path}) geri yüklendi"))?;
+        Ok(())
+    }
+    pub fn prioritize(&mut self, path: &str) -> Result<()> {
+        crate::security::relative(path)?;
+        self.db.prioritize(path)?;
+        self.db.log(&format!("{path} yükleme sırasında en başa alındı"))?;
         Ok(())
     }
     fn requeue_or_restore(&mut self, path: &str) -> Result<()> {

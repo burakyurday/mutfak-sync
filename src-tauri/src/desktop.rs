@@ -1,6 +1,6 @@
 use crate::{
     cloud::{CloudProvider, MockCloudProvider, RcloneProvider},
-    database::{Activity, Database, Entry, Settings},
+    database::{Activity, Database, Entry, FileVersion, Settings},
     engine::{ArchivePlan, Engine},
     security,
 };
@@ -92,7 +92,7 @@ fn provider(data: &std::path::Path, s: &Settings) -> Result<Box<dyn CloudProvide
         binary: binary()?,
         config: data.join("rclone.conf"),
         device_folder: folder.into(),
-        bandwidth: s.bandwidth.clone(),
+        bandwidth: security::clean_bandwidth(&s.bandwidth),
         work: data.to_owned(),
     }))
 }
@@ -302,6 +302,55 @@ async fn restore(path: String, state: State<'_, AppState>) -> std::result::Resul
             .as_mut()
             .context("Kurulum gerekli")?
             .restore(&path)
+    })
+    .await
+}
+#[tauri::command]
+async fn file_versions(
+    path: String,
+    state: State<'_, AppState>,
+) -> std::result::Result<Vec<FileVersion>, String> {
+    let s = state.inner().clone();
+    blocking(move || {
+        security::relative(&path)?;
+        s.core
+            .lock()
+            .unwrap()
+            .as_ref()
+            .context("Kurulum gerekli")?
+            .list_versions(&path)
+    })
+    .await
+}
+#[tauri::command]
+async fn restore_version(
+    path: String,
+    version_id: i64,
+    state: State<'_, AppState>,
+) -> std::result::Result<(), String> {
+    let s = state.inner().clone();
+    blocking(move || {
+        security::relative(&path)?;
+        s.core
+            .lock()
+            .unwrap()
+            .as_mut()
+            .context("Kurulum gerekli")?
+            .restore_version(&path, version_id)
+    })
+    .await
+}
+#[tauri::command]
+async fn prioritize(path: String, state: State<'_, AppState>) -> std::result::Result<(), String> {
+    let s = state.inner().clone();
+    blocking(move || {
+        security::relative(&path)?;
+        s.core
+            .lock()
+            .unwrap()
+            .as_mut()
+            .context("Kurulum gerekli")?
+            .prioritize(&path)
     })
     .await
 }
@@ -615,6 +664,7 @@ pub fn run() {
                 ("pause", "Duraklat / Devam Et"),
                 ("local", "Mutfak Ajans Klasörünü Aç"),
                 ("drive", "Google Drive'da Aç"),
+                ("hub", "Mutfak Hub Portalını Aç"),
                 ("settings", "Ayarlar"),
                 ("quit", "Çıkış"),
             ]
@@ -633,6 +683,13 @@ pub fn run() {
                     let state = app.state::<AppState>();
                     if event.id().as_ref() == "settings" {
                         let _ = app.emit("navigate", "settings");
+                    }
+                    if event.id().as_ref() == "hub" {
+                        let _ = app.emit("navigate", "hub");
+                        if let Some(w) = app.get_webview_window("main") {
+                            let _ = w.show();
+                            let _ = w.set_focus();
+                        }
                     }
                     match event.id().as_ref() {
                         "quit" => app.exit(0),
@@ -681,6 +738,9 @@ pub fn run() {
             archive_plan,
             archive_file,
             restore,
+            file_versions,
+            restore_version,
+            prioritize,
             connect_drive,
             cancel_drive,
             diagnostics,

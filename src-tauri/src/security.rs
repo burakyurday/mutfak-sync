@@ -108,14 +108,63 @@ pub fn hide_windows_console(command: &mut std::process::Command) {
     let _ = command;
 }
 pub fn excluded(rel: &str, optional: bool) -> bool {
-    rel.split('/').any(|name| {
+    is_excluded(rel, optional, "")
+}
+
+pub fn is_excluded(rel: &str, optional: bool, custom_patterns: &str) -> bool {
+    let built_in = rel.split('/').any(|name| {
         matches!(
             name,
-            ".DS_Store" | "Thumbs.db" | "desktop.ini" | ".mutfak-sync" | ".mutfak-versions"
+            ".DS_Store"
+                | "Thumbs.db"
+                | "desktop.ini"
+                | ".mutfak-sync"
+                | ".mutfak-versions"
+                | ".syncignore"
         ) || name.starts_with("~$")
             || name.ends_with(".mutfak-part")
             || (optional && matches!(name, "node_modules" | ".git" | "target" | ".next"))
-    })
+    });
+    if built_in {
+        return true;
+    }
+    if custom_patterns.trim().is_empty() {
+        return false;
+    }
+    let rel_lower = rel.to_ascii_lowercase();
+    for pat in custom_patterns.split([',', '\n', ';']) {
+        let raw = pat.trim();
+        if raw.is_empty() || raw.starts_with('#') {
+            continue;
+        }
+        let p = raw.replace('\\', "/").to_ascii_lowercase();
+        let p = p.trim_start_matches('/');
+        if let Some(ext) = p.strip_prefix("*.") {
+            if rel_lower.ends_with(&format!(".{ext}")) {
+                return true;
+            }
+        } else if p.ends_with('/') {
+            let dir = p.trim_end_matches('/');
+            if rel_lower.split('/').any(|part| part == dir) {
+                return true;
+            }
+        } else if rel_lower.split('/').any(|part| part == p) || rel_lower == p {
+            return true;
+        }
+    }
+    false
+}
+
+pub fn clean_bandwidth(value: &str) -> String {
+    let trimmed = value.trim();
+    if trimmed.is_empty() || trimmed.eq_ignore_ascii_case("off") || trimmed == "0" {
+        return String::new();
+    }
+    if trimmed.chars().all(|c| c.is_ascii_alphanumeric() || c == ':' || c == '.') {
+        trimmed.to_string()
+    } else {
+        String::new()
+    }
 }
 pub fn folder_id(value: &str) -> Result<String> {
     let trimmed = value.trim();

@@ -43,7 +43,7 @@ import { checkForAppUpdate, installAppUpdate } from './updater';
 import type { AvailableUpdate } from './updater';
 import './styles/app.css';
 
-type Page = 'overview' | 'files' | 'activity' | 'storage' | 'settings';
+type Page = 'overview' | 'files' | 'activity' | 'storage' | 'hub' | 'settings';
 type FileCategory = 'all' | 'backed_up' | 'pending' | 'locked' | 'errors';
 type UpdateState = {
   phase: 'idle' | 'checking' | 'latest' | 'available' | 'downloading' | 'installing' | 'error';
@@ -57,6 +57,7 @@ const pages: { id: Page; label: string; icon: typeof Cloud }[] = [
   { id: 'overview', label: 'Ana Sayfa', icon: LayoutDashboard },
   { id: 'files', label: 'Dosyalar', icon: Folder },
   { id: 'storage', label: 'Yer Aç', icon: HardDrive },
+  { id: 'hub', label: 'Mutfak Hub', icon: Sparkles },
   { id: 'settings', label: 'Ayarlar', icon: SettingsIcon },
 ];
 
@@ -65,6 +66,7 @@ const pageNames: Record<Page, string> = {
   files: 'Dosyalar',
   activity: 'İşlem Geçmişi',
   storage: 'Yer Aç',
+  hub: 'Mutfak Hub Portalı',
   settings: 'Ayarlar',
 };
 
@@ -116,8 +118,9 @@ function App() {
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'system');
   const [plan, setPlan] = useState<ArchivePlan | null>(null);
   const [disconnectConfirm, setDisconnectConfirm] = useState(false);
-  const [appVersion, setAppVersion] = useState('0.1.6');
+  const [appVersion, setAppVersion] = useState('0.1.7');
   const [updateState, setUpdateState] = useState<UpdateState>({ phase: 'idle' });
+  const [selectedDetailFile, setSelectedDetailFile] = useState<Entry | null>(null);
 
   const refresh = async () => {
     if (native) {
@@ -168,11 +171,12 @@ function App() {
   const total = backed.reduce((n, e) => n + e.size, 0);
   const latest = Math.max(0, ...backed.map((e) => e.last_success || 0));
   const profile = snapshot.settings?.user || 'Mutfak Ajans';
+  const [selectedVersionFile, setSelectedVersionFile] = useState<string | null>(null);
 
   const prevPending = React.useRef(pending.length);
   useEffect(() => {
     if (prevPending.current > 0 && pending.length === 0 && backed.length > 0) {
-      if ('Notification' in window && Notification.permission === 'granted') {
+      if (snapshot.settings?.notifications !== false && 'Notification' in window && Notification.permission === 'granted') {
         new Notification('Mutfak Sync', {
           body: 'Tüm dosyalarınız Google Drive’a başarıyla yedeklendi.',
           icon: '/brand/mutfak-ajans-logo.png',
@@ -180,7 +184,30 @@ function App() {
       }
     }
     prevPending.current = pending.length;
-  }, [pending.length, backed.length]);
+  }, [pending.length, backed.length, snapshot.settings?.notifications]);
+
+  const prevErrors = React.useRef<string[]>([]);
+  useEffect(() => {
+    if (snapshot.settings?.notifications === false) return;
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+    const currentErrors = pending
+      .filter((e) => e.status === 'error' && e.error)
+      .map((e) => e.error!);
+
+    for (const err of currentErrors) {
+      if (!prevErrors.current.includes(err)) {
+        const classified = classifyError(err);
+        if (classified && (classified.category === 'auth' || classified.category === 'quota')) {
+          new Notification(`Mutfak Sync · ${classified.label}`, {
+            body: classified.detail,
+            icon: '/brand/mutfak-ajans-logo.png',
+          });
+        }
+      }
+    }
+    prevErrors.current = currentErrors;
+  }, [pending, snapshot.settings?.notifications]);
 
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
@@ -376,6 +403,8 @@ function App() {
                   ? 'Son yapılan işlemleri gör.'
                   : page === 'storage'
                   ? 'Doğrulanmış dosyaları buluta arşivleyerek yer aç.'
+                  : page === 'hub'
+                  ? 'Müşteri portalı, ekip paylaşımı ve canlı proje linkleri.'
                   : 'Temel ve gelişmiş ayarları yönet.'}
               </p>
             </div>
@@ -465,6 +494,16 @@ function App() {
                       <small>Mutfak Ajans / {snapshot.settings ? `${profile} PC` : 'Cihaz klasörü'}</small>
                     </div>
                   </div>
+                  <div className="team-card">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Monitor size={16} />
+                      <span style={{ fontSize: '13px' }}>
+                        <strong>{snapshot.settings?.user === 'Burak' ? 'Burak PC (Bu Cihaz)' : 'Burak PC'}</strong> ·{' '}
+                        <strong>{snapshot.settings?.user === 'Naz' ? 'Naz PC (Bu Cihaz)' : 'Naz PC'}</strong>
+                      </span>
+                    </div>
+                    <span className="tag" style={{ margin: 0 }}>EKİP SENKRONU</span>
+                  </div>
                   <div className="transfer-status">
                     <span className={'dot ' + (snapshot.paused ? '' : 'green')} />
                     {snapshot.paused
@@ -500,8 +539,26 @@ function App() {
                 <PanelTitle title="Dosyaların" sub="Son yedekleme durumuna bir bakış." action="Tüm dosyalar" onClick={() => setPage('files')} />
                 <FileTable
                   entries={files.slice(0, 5)}
+                  onSelectFile={(e) => setSelectedDetailFile(e)}
                   empty="İlk dosyan için hazırız. Kurulumu tamamladıktan sonra çalışma klasörüne eklediğin dosyalar burada görünecek."
                 />
+              </section>
+
+              <section className="hub-bridge-banner">
+                <div className="hub-bridge-content">
+                  <div className="hub-bridge-icon">
+                    <Sparkles size={24} />
+                  </div>
+                  <div className="hub-bridge-text">
+                    <h3>Mutfak Hub ile Müşteriye Sun</h3>
+                    <p>
+                      Yedeklenen müşteri dosyalarını ve önizlemeleri şifresiz, güvenli magic-link ile müşterilerinize açın.
+                    </p>
+                  </div>
+                </div>
+                <button className="button primary" onClick={() => setPage('hub')}>
+                  Mutfak Hub’ı Gör <ArrowUpRight size={16} />
+                </button>
               </section>
 
               <footer>
@@ -582,6 +639,15 @@ function App() {
               <FileTable
                 entries={tree(filteredEntries)}
                 onRestore={(e) => void run('restore', { path: e.path }, 'Dosya orijinal konumuna geri yüklendi.')}
+                onViewVersions={(e) => setSelectedVersionFile(e.path)}
+                onPrioritize={(e) => void run('prioritize', { path: e.path }, `${e.path} sıranın başına alındı.`)}
+                onSelectFile={(e) => setSelectedDetailFile(e)}
+                onShareHub={(e) => {
+                  const hubUrl = import.meta.env.VITE_MUTFAK_HUB_URL?.trim() || 'https://hub.mutfakajans.com';
+                  const link = `${hubUrl}/dosya?yol=${encodeURIComponent(e.path)}`;
+                  void navigator.clipboard?.writeText(link);
+                  setNotice(`${e.path} için Mutfak Hub bağlantısı kopyalandı.`);
+                }}
                 empty="Çalışma klasöründe henüz dosya bulunamadı."
               />
             </section>
@@ -606,6 +672,22 @@ function App() {
                   detail="Son kontrol işlem öncesi yapılır"
                 />
               </section>
+
+              {files.filter((e) => e.status === 'backed_up' && (Date.now() / 1000 - (e.last_success || 0)) > 30 * 86400).length > 0 && (
+                <div className="hub-bridge-banner" style={{ marginTop: '0', marginBottom: '24px', borderColor: 'rgba(245, 158, 11, 0.4)' }}>
+                  <div className="hub-bridge-content">
+                    <div className="hub-bridge-icon" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
+                      <Sparkles size={24} />
+                    </div>
+                    <div className="hub-bridge-text">
+                      <h3>Akıllı Yer Açma Önerisi</h3>
+                      <p>
+                        Son 30 gündür dokunulmamış ve bulut kopyası doğrulanmış {files.filter((e) => e.status === 'backed_up' && (Date.now() / 1000 - (e.last_success || 0)) > 30 * 86400).length} dosya bulunuyor. Güvenle arşivleyip yer açabilirsiniz.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="notice persistent">
                 <ShieldCheck size={18} />
@@ -649,6 +731,14 @@ function App() {
                 PSD dosyasını düzenlemek için önce geri indir.
               </p>
             </>
+          )}
+
+          {page === 'hub' && (
+            <section className="panel hub-section-wrap">
+              <React.Suspense fallback={<div className="empty"><Loader2 size={24} className="spin" /><p>Mutfak Hub yükleniyor…</p></div>}>
+                <HubPortal />
+              </React.Suspense>
+            </section>
           )}
 
           {page === 'settings' && (
@@ -751,6 +841,43 @@ function App() {
             </div>
           </section>
         </div>
+      )}
+
+      {selectedVersionFile && (
+        <VersionHistoryModal
+          path={selectedVersionFile}
+          onClose={() => setSelectedVersionFile(null)}
+          onRestore={async (versionId) => {
+            await run('restore_version', { path: selectedVersionFile, versionId }, 'Seçilen sürüm başarıyla geri yüklendi.');
+            setSelectedVersionFile(null);
+          }}
+        />
+      )}
+
+      {selectedDetailFile && (
+        <FileDetailModal
+          entry={selectedDetailFile}
+          onClose={() => setSelectedDetailFile(null)}
+          onRestore={async () => {
+            await run('restore', { path: selectedDetailFile.path }, 'Dosya orijinal konumuna geri yüklendi.');
+            setSelectedDetailFile(null);
+          }}
+          onPrioritize={async () => {
+            await run('prioritize', { path: selectedDetailFile.path }, `${selectedDetailFile.path} sıranın başına alındı.`);
+            setSelectedDetailFile(null);
+          }}
+          onViewVersions={() => {
+            const p = selectedDetailFile.path;
+            setSelectedDetailFile(null);
+            setSelectedVersionFile(p);
+          }}
+          onShareHub={() => {
+            const hubUrl = import.meta.env.VITE_MUTFAK_HUB_URL?.trim() || 'https://hub.mutfakajans.com';
+            const link = `${hubUrl}/dosya?yol=${encodeURIComponent(selectedDetailFile.path)}`;
+            void navigator.clipboard?.writeText(link);
+            setNotice(`${selectedDetailFile.path} için Mutfak Hub bağlantısı kopyalandı.`);
+          }}
+        />
       )}
     </div>
   );
@@ -951,10 +1078,18 @@ function FileTable({
   entries,
   empty,
   onRestore,
+  onViewVersions,
+  onShareHub,
+  onPrioritize,
+  onSelectFile,
 }: {
   entries: Entry[];
   empty: string;
   onRestore?: (e: Entry) => void;
+  onViewVersions?: (e: Entry) => void;
+  onShareHub?: (e: Entry) => void;
+  onPrioritize?: (e: Entry) => void;
+  onSelectFile?: (e: Entry) => void;
 }) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const visible = entries.filter((e) => ![...collapsed].some((p) => e.path.startsWith(p + '/')));
@@ -1002,7 +1137,17 @@ function FileTable({
                     ) : (
                       <span className={'format-pill ' + fmt.cls}>{fmt.label}</span>
                     )}
-                    <span title={e.path}>{e.path}</span>
+                    <span
+                      title={e.path}
+                      style={{ cursor: onSelectFile && e.kind === 'file' ? 'pointer' : undefined }}
+                      onClick={() => {
+                        if (e.kind === 'file' && onSelectFile) {
+                          onSelectFile(e);
+                        }
+                      }}
+                    >
+                      {e.path}
+                    </span>
                   </span>
                 </td>
                 <td>{e.kind === 'directory' ? '—' : bytes(e.size)}</td>
@@ -1013,9 +1158,37 @@ function FileTable({
                       <span className="dot" />
                       {statuses[e.status] || e.status}
                     </span>
+                    {(e.status === 'pending' || e.status === 'error') && onPrioritize && (
+                      <button
+                        className="icon-button"
+                        title="Sıranın en başına al (Öncelikli yükle)"
+                        onClick={() => onPrioritize(e)}
+                      >
+                        <ArrowUpRight size={15} />
+                      </button>
+                    )}
+                    {e.status === 'backed_up' && e.remote_id && (
+                      <button
+                        className="icon-button"
+                        title="Google Drive'da Aç"
+                        onClick={() => window.open(`https://drive.google.com/open?id=${e.remote_id}`, '_blank')}
+                      >
+                        <ExternalLink size={15} />
+                      </button>
+                    )}
                     {e.status === 'cloud_only' && onRestore && (
                       <button className="icon-button" title="Orijinal konuma geri yükle" onClick={() => onRestore(e)}>
                         <ArrowDownToLine size={15} />
+                      </button>
+                    )}
+                    {e.kind === 'file' && (e.status === 'backed_up' || e.status === 'cloud_only') && onViewVersions && (
+                      <button className="icon-button" title="Önceki sürümleri gör" onClick={() => onViewVersions(e)}>
+                        <History size={15} />
+                      </button>
+                    )}
+                    {e.status === 'backed_up' && onShareHub && (
+                      <button className="icon-button" title="Mutfak Hub müşteri bağlantısı al" onClick={() => onShareHub(e)}>
+                        <Sparkles size={15} />
                       </button>
                     )}
                     {badge ? (
@@ -1035,6 +1208,231 @@ function FileTable({
     </div>
   ) : (
     <Empty icon={Folder} text={empty} />
+  );
+}
+
+function VersionHistoryModal({
+  path,
+  onClose,
+  onRestore,
+}: {
+  path: string;
+  onClose: () => void;
+  onRestore: (versionId: number) => Promise<void>;
+}) {
+  const [versions, setVersions] = useState<import('./types').FileVersion[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [restoringId, setRestoringId] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        if (native) {
+          const list = await command<import('./types').FileVersion[]>('file_versions', { path });
+          if (active) setVersions(list);
+        } else {
+          if (active) {
+            setVersions([
+              {
+                id: 1,
+                path,
+                remote_path: `.mutfak-versions/${path}/1-preview`,
+                checksum: 'e2fc714c4727ee9395f324cd2e7f331f',
+                created: Math.floor(Date.now() / 1000) - 86400,
+              },
+            ]);
+          }
+        }
+      } catch (e) {
+        if (active) setError(String(e));
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [path]);
+
+  return (
+    <div className="modal-backdrop">
+      <section className="modal" role="dialog" aria-modal="true" aria-labelledby="history-title">
+        <div className="modal-top">
+          <span className="modal-symbol">
+            <History size={26} />
+          </span>
+          <button className="icon-button" aria-label="Kapat" onClick={onClose}>
+            ×
+          </button>
+        </div>
+        <h2 id="history-title">Dosya Sürüm Geçmişi</h2>
+        <p style={{ wordBreak: 'break-all' }}>{path}</p>
+
+        {loading ? (
+          <div className="empty">
+            <Loader2 size={24} className="spin" />
+            <p>Geçmiş sürümler yükleniyor…</p>
+          </div>
+        ) : error ? (
+          <p className="row-error">{error}</p>
+        ) : versions.length === 0 ? (
+          <div className="empty">
+            <History size={28} />
+            <p>
+              Bu dosya için henüz arşivlenmiş önceki bir sürüm kaydı bulunmuyor. Ayarlar’da “Önceki sürümleri ayrıca sakla”
+              seçeneği açıkken her değişiklikte eski kopyalar otomatik kaydedilir.
+            </p>
+          </div>
+        ) : (
+          <div className="version-history-list">
+            {versions.map((v) => (
+              <div key={v.id} className="version-row">
+                <div className="version-meta">
+                  <strong>{time(v.created)}</strong>
+                  <small>MD5: {v.checksum ? v.checksum.slice(0, 16) : '—'}</small>
+                </div>
+                <button
+                  className="button"
+                  disabled={restoringId === v.id}
+                  onClick={async () => {
+                    setRestoringId(v.id);
+                    try {
+                      await onRestore(v.id);
+                      onClose();
+                    } catch (e) {
+                      setError(String(e));
+                    } finally {
+                      setRestoringId(null);
+                    }
+                  }}
+                >
+                  <ArrowDownToLine size={14} /> {restoringId === v.id ? 'Yükleniyor…' : 'Bu sürüme dön'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="modal-actions">
+          <button className="button" onClick={onClose}>
+            Kapat
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function FileDetailModal({
+  entry,
+  onClose,
+  onRestore,
+  onPrioritize,
+  onViewVersions,
+  onShareHub,
+}: {
+  entry: Entry;
+  onClose: () => void;
+  onRestore?: () => void;
+  onPrioritize?: () => void;
+  onViewVersions?: () => void;
+  onShareHub?: () => void;
+}) {
+  const fmt = getFormatBadge(entry.path, entry.kind);
+  const badge = classifyError(entry.error);
+
+  return (
+    <div className="modal-backdrop">
+      <section className="modal" role="dialog" aria-modal="true" aria-labelledby="file-detail-title">
+        <div className="modal-top">
+          <span className={'modal-symbol format-pill ' + fmt.cls} style={{ borderRadius: '12px', fontSize: '14px', padding: '6px 12px' }}>
+            {fmt.label}
+          </span>
+          <button className="icon-button" aria-label="Kapat" onClick={onClose}>
+            ×
+          </button>
+        </div>
+        <h2 id="file-detail-title" style={{ wordBreak: 'break-all' }}>
+          {entry.path.split('/').pop() || entry.path}
+        </h2>
+        <p style={{ wordBreak: 'break-all', fontSize: '13px', color: 'var(--muted)' }}>{entry.path}</p>
+
+        <div className="detail-grid">
+          <div className="detail-item">
+            <small>Durum</small>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span className={'status ' + entry.status} style={{ padding: 0 }}>
+                <span className="dot" />
+                {statuses[entry.status] || entry.status}
+              </span>
+            </div>
+          </div>
+          <div className="detail-item">
+            <small>Dosya Boyutu</small>
+            <strong>{entry.kind === 'directory' ? 'Klasör' : bytes(entry.size)}</strong>
+          </div>
+          <div className="detail-item">
+            <small>Son Yedekleme</small>
+            <strong>{entry.last_success ? time(entry.last_success) : 'Henüz yedeklenmedi'}</strong>
+          </div>
+          <div className="detail-item">
+            <small>Doğrulama (MD5 Checksum)</small>
+            <strong>{entry.checksum ? entry.checksum.slice(0, 16) : '—'}</strong>
+          </div>
+          {entry.remote_id && (
+            <div className="detail-item" style={{ gridColumn: 'span 2' }}>
+              <small>Google Drive Kimliği</small>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <strong style={{ fontSize: '12px' }}>{entry.remote_id}</strong>
+                <a
+                  href={`https://drive.google.com/open?id=${entry.remote_id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="button"
+                  style={{ padding: '4px 10px', fontSize: '12px' }}
+                >
+                  <ExternalLink size={13} /> Drive’da Aç
+                </a>
+              </div>
+            </div>
+          )}
+          {entry.error && (
+            <div className="detail-item" style={{ gridColumn: 'span 2', borderColor: 'rgba(239, 68, 68, 0.4)' }}>
+              <small style={{ color: '#ef4444' }}>Hata Açıklaması</small>
+              <strong style={{ color: '#ef4444' }}>{badge ? `${badge.label}: ${badge.detail}` : entry.error}</strong>
+            </div>
+          )}
+        </div>
+
+        <div className="modal-actions" style={{ flexWrap: 'wrap', gap: '8px' }}>
+          {(entry.status === 'pending' || entry.status === 'error') && onPrioritize && (
+            <button className="button primary" onClick={onPrioritize}>
+              <ArrowUpRight size={15} /> Sıranın Başına Al
+            </button>
+          )}
+          {entry.status === 'backed_up' && onShareHub && (
+            <button className="button" onClick={onShareHub}>
+              <Sparkles size={15} /> Mutfak Hub Linki
+            </button>
+          )}
+          {entry.kind === 'file' && (entry.status === 'backed_up' || entry.status === 'cloud_only') && onViewVersions && (
+            <button className="button" onClick={onViewVersions}>
+              <History size={15} /> Sürüm Geçmişi
+            </button>
+          )}
+          {entry.status === 'cloud_only' && onRestore && (
+            <button className="button primary" onClick={onRestore}>
+              <ArrowDownToLine size={15} /> Orijinal Konuma Geri Yükle
+            </button>
+          )}
+          <button className="button" onClick={onClose}>
+            Kapat
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -1135,6 +1533,18 @@ function SettingsPage({
         </select>
       </label>
 
+      <label className="settings-row">
+        <div>
+          <strong>Masaüstü bildirimleri</strong>
+          <p>Yedekleme bittiğinde veya Google Drive kotası/yetki süresi dolduğunda bildirim göster.</p>
+        </div>
+        <input
+          type="checkbox"
+          checked={s.notifications ?? true}
+          onChange={(e) => setS({ ...s, notifications: e.target.checked })}
+        />
+      </label>
+
       <div className="settings-row">
         <div>
           <strong>Yazılım güncellemesi · v{appVersion}</strong>
@@ -1192,17 +1602,50 @@ function SettingsPage({
             <option value={1800}>30 dakika</option>
           </select>
         </label>
-        <label className="settings-row">
+        <div className="settings-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
           <div>
-            <strong>İnternet hızı sınırı</strong>
-            <p>Boş bırak: sınırsız. Örnek: 10M</p>
+            <strong>İnternet yükleme hızı sınırı</strong>
+            <p>Büyük dosya yüklemelerinde ofis internetini rahatlatmak için sınır belirleyin.</p>
+          </div>
+          <div className="chip-group">
+            {[
+              { label: 'Sınırsız', value: '' },
+              { label: '5 MB/s', value: '5M' },
+              { label: '10 MB/s', value: '10M' },
+              { label: '20 MB/s', value: '20M' },
+              { label: '50 MB/s', value: '50M' },
+            ].map((chip) => (
+              <button
+                type="button"
+                key={chip.value}
+                className={'chip-btn ' + (s.bandwidth === chip.value ? 'active' : '')}
+                onClick={() => setS({ ...s, bandwidth: chip.value })}
+              >
+                {chip.label}
+              </button>
+            ))}
           </div>
           <input
             value={s.bandwidth}
             onChange={(e) => setS({ ...s, bandwidth: e.target.value })}
-            placeholder="Sınırsız"
+            placeholder="Özel sınır (Örn: 15M veya sınırsız için boş bırakın)"
           />
-        </label>
+        </div>
+        <div className="settings-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
+          <div>
+            <strong>Özel hariç tutma kuralları (.syncignore)</strong>
+            <p>
+              Yüklenmesini istemediğiniz dosya/klasör desenleri (virgülle ayrılmış). Klasördeki <code>.syncignore</code> dosyası da geçerlidir.
+            </p>
+          </div>
+          <textarea
+            className="textarea-input"
+            rows={2}
+            value={s.custom_excludes || ''}
+            onChange={(e) => setS({ ...s, custom_excludes: e.target.value })}
+            placeholder="Örn: *.tmp, render_cache/, *.prproj.backup, temp/"
+          />
+        </div>
         <label className="settings-row">
           <div>
             <strong>Yazılım proje klasörlerini atla</strong>
@@ -1223,6 +1666,28 @@ function SettingsPage({
             type="checkbox"
             checked={s.versions}
             onChange={(e) => setS({ ...s, versions: e.target.checked })}
+          />
+        </label>
+        <label className="settings-row">
+          <div>
+            <strong>Pil tasarrufu modu</strong>
+            <p>Dizüstü bilgisayar pilde çalışırken büyük dosya yüklemelerini duraklat.</p>
+          </div>
+          <input
+            type="checkbox"
+            checked={s.battery_saver ?? false}
+            onChange={(e) => setS({ ...s, battery_saver: e.target.checked })}
+          />
+        </label>
+        <label className="settings-row">
+          <div>
+            <strong>Tarifeli bağlantı / Mobil veri tasarrufu</strong>
+            <p>Mobil erişim noktası veya kotalı internette arka plan yüklemelerini duraklat.</p>
+          </div>
+          <input
+            type="checkbox"
+            checked={s.metered_saver ?? false}
+            onChange={(e) => setS({ ...s, metered_saver: e.target.checked })}
           />
         </label>
         <div className="settings-row">

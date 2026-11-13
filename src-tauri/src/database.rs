@@ -14,7 +14,20 @@ pub struct Settings {
     pub bandwidth: String,
     pub exclude_dev: bool,
     pub versions: bool,
+    #[serde(default)]
+    pub custom_excludes: String,
+    #[serde(default = "default_true")]
+    pub notifications: bool,
+    #[serde(default)]
+    pub battery_saver: bool,
+    #[serde(default)]
+    pub metered_saver: bool,
 }
+
+fn default_true() -> bool {
+    true
+}
+
 impl Default for Settings {
     fn default() -> Self {
         Self {
@@ -27,8 +40,20 @@ impl Default for Settings {
             bandwidth: String::new(),
             exclude_dev: false,
             versions: false,
+            custom_excludes: String::new(),
+            notifications: true,
+            battery_saver: false,
+            metered_saver: false,
         }
     }
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileVersion {
+    pub id: i64,
+    pub path: String,
+    pub remote_path: String,
+    pub checksum: String,
+    pub created: i64,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Entry {
@@ -141,10 +166,32 @@ impl Database {
             .collect::<rusqlite::Result<Vec<_>>>()?;
         Ok(rows)
     }
+    pub fn file_versions(&self, path: &str) -> Result<Vec<FileVersion>> {
+        let mut st = self.conn.prepare(
+            "SELECT id, path, remote_path, checksum, created FROM file_versions WHERE path=?1 ORDER BY created DESC",
+        )?;
+        let rows = st.query_map([path], |r| {
+            Ok(FileVersion {
+                id: r.get(0)?,
+                path: r.get(1)?,
+                remote_path: r.get(2)?,
+                checksum: r.get(3)?,
+                created: r.get(4)?,
+            })
+        })?;
+        Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+    }
     pub fn reset_retry_delays(&self) -> Result<()> {
         self.conn.execute(
             "UPDATE upload_queue SET available = ?1 WHERE available > ?1",
             [now()],
+        )?;
+        Ok(())
+    }
+    pub fn prioritize(&self, path: &str) -> Result<()> {
+        self.conn.execute(
+            "UPDATE upload_queue SET available = 0 WHERE path = ?1",
+            [path],
         )?;
         Ok(())
     }

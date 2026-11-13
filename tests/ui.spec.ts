@@ -58,7 +58,7 @@ test('Ayarlar ekranında kurulumu sıfırlama açık onay gerektirir',async({pag
   w.isTauri=true;w.testCalls=[];
   w.__TAURI_INTERNALS__={transformCallback:()=>1,invoke:async(name:string,args:any)=>{
    w.testCalls.push({name,args});
-   if(name==='plugin:app|version')return '0.1.6';
+   if(name==='plugin:app|version')return '0.1.7';
    if(name==='snapshot')return {settings,entries:[],activity:[],paused:false,error:null,free_bytes:1234567,device:'test-device',progress:null};
    if(name==='disconnect_account')return null;
    return null;
@@ -75,4 +75,140 @@ test('Ayarlar ekranında kurulumu sıfırlama açık onay gerektirir',async({pag
  await page.getByRole('button',{name:'Kurulumu sıfırla'}).click();
  await page.getByRole('button',{name:'Onaylıyorum, sıfırla'}).click();
  expect(await page.evaluate(()=>(window as any).testCalls.some((c:any)=>c.name==='disconnect_account'))).toBe(true);
+});
+
+test('Mutfak Hub köprüsü, sürüm geçmişi ve bant genişliği kontrolleri çalışır', async ({ page }) => {
+  await page.addInitScript(() => {
+    const w = window as unknown as Record<string, any>;
+    const settings = {
+      user: 'Burak',
+      root: '/tmp/test-only',
+      folder_id: 'https://drive.google.com/drive/folders/test',
+      mock: false,
+      stability_secs: 30,
+      scan_secs: 600,
+      bandwidth: '',
+      exclude_dev: false,
+      versions: true,
+      custom_excludes: '*.cache',
+      notifications: true,
+    };
+    const entries = [
+      {
+        path: 'Müşteriler/Logo.ai',
+        kind: 'file',
+        size: 2048,
+        modified: '1',
+        checksum: 'abc123456789',
+        status: 'backed_up',
+        remote_id: 'remote-1',
+        parent_id: 'root',
+        last_success: 1,
+        retry: 0,
+        error: null,
+      },
+    ];
+    w.isTauri = true;
+    w.testCalls = [];
+    w.__TAURI_INTERNALS__ = {
+      transformCallback: () => 1,
+      invoke: async (name: string, args: any) => {
+        w.testCalls.push({ name, args });
+        if (name === 'plugin:app|version') return '0.1.7';
+        if (name === 'snapshot') return { settings, entries, activity: [], paused: false, error: null, free_bytes: 1234567, device: 'test-device', progress: null };
+        if (name === 'file_versions') return [
+          { id: 101, path: 'Müşteriler/Logo.ai', remote_path: '.mutfak-versions/Müşteriler/Logo.ai/1', checksum: 'oldchecksum123', created: 1700000000 }
+        ];
+        return null;
+      },
+    };
+  });
+  await page.goto('/');
+
+  // 1. Hub navigation
+  await page.getByRole('navigation').getByRole('button', { name: 'Mutfak Hub', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Projeler ve dosyalar tek güvenli alanda.' })).toBeVisible();
+
+  // 2. File table version history modal
+  await page.getByRole('navigation').getByRole('button', { name: 'Dosyalar', exact: true }).click();
+  await expect(page.getByText('Müşteriler/Logo.ai')).toBeVisible();
+  await page.getByRole('button', { name: 'Önceki sürümleri gör' }).click();
+  await expect(page.getByRole('dialog')).toContainText('Dosya Sürüm Geçmişi');
+  await expect(page.getByRole('button', { name: 'Bu sürüme dön' })).toBeVisible();
+  await page.getByLabel('Kapat').click();
+
+  // 3. Settings page bandwidth chip and custom exclude
+  await page.getByRole('navigation').getByRole('button', { name: 'Ayarlar', exact: true }).click();
+  await page.getByText('Gelişmiş ayarlar', { exact: true }).click();
+  await page.getByRole('button', { name: '10 MB/s' }).click();
+  await expect(page.getByPlaceholder('Özel sınır (Örn: 15M veya sınırsız için boş bırakın)')).toHaveValue('10M');
+  await expect(page.getByPlaceholder('Örn: *.tmp, render_cache/, *.prproj.backup, temp/')).toHaveValue('*.cache');
+});
+
+
+test('Dosya detay modalı, öncelikli yükleme ve pil/bağlantı tasarrufu ayarları çalışır', async ({ page }) => {
+  await page.addInitScript(() => {
+    const w = window as unknown as Record<string, any>;
+    const settings = {
+      user: 'Burak',
+      root: '/tmp/test-only',
+      folder_id: 'https://drive.google.com/drive/folders/test',
+      mock: false,
+      stability_secs: 30,
+      scan_secs: 600,
+      bandwidth: '',
+      exclude_dev: false,
+      versions: true,
+      battery_saver: false,
+      metered_saver: false,
+    };
+    const entries = [
+      {
+        path: 'Müşteriler/Katalog.psd',
+        kind: 'file',
+        size: 50000000,
+        modified: '1',
+        checksum: 'psdchecksum123456',
+        status: 'pending',
+        remote_id: null,
+        parent_id: 'root',
+        last_success: 0,
+        retry: 0,
+        error: null,
+      },
+    ];
+    w.isTauri = true;
+    w.testCalls = [];
+    w.__TAURI_INTERNALS__ = {
+      transformCallback: () => 1,
+      invoke: async (name: string, args: any) => {
+        w.testCalls.push({ name, args });
+        if (name === 'plugin:app|version') return '0.1.7';
+        if (name === 'snapshot') return { settings, entries, activity: [], paused: false, error: null, free_bytes: 1234567, device: 'test-device', progress: null };
+        if (name === 'prioritize') return null;
+        return null;
+      },
+    };
+  });
+  await page.goto('/');
+
+  // 1. Files page - click on pending file name to open detail modal
+  await page.getByRole('navigation').getByRole('button', { name: /Dosyalar/ }).click();
+  await expect(page.getByText('Müşteriler/Katalog.psd')).toBeVisible();
+  await page.getByText('Müşteriler/Katalog.psd').click();
+  await expect(page.getByRole('dialog')).toContainText('Katalog.psd');
+  await expect(page.getByRole('dialog')).toContainText('Doğrulama (MD5 Checksum)');
+  await page.getByLabel('Kapat').click();
+
+  // 2. Prioritize button triggers prioritize IPC call
+  const prioritizeBtn = page.getByTitle('Sıranın en başına al (Öncelikli yükle)');
+  await expect(prioritizeBtn).toBeVisible();
+  await prioritizeBtn.click();
+  expect(await page.evaluate(() => (window as any).testCalls.some((c: any) => c.name === 'prioritize' && c.args.path === 'Müşteriler/Katalog.psd'))).toBe(true);
+
+  // 3. Settings page - battery saver & metered saver toggles
+  await page.getByRole('navigation').getByRole('button', { name: 'Ayarlar', exact: true }).click();
+  await page.getByText('Gelişmiş ayarlar', { exact: true }).click();
+  await expect(page.getByText('Pil tasarrufu modu')).toBeVisible();
+  await expect(page.getByText('Tarifeli bağlantı / Mobil veri tasarrufu')).toBeVisible();
 });

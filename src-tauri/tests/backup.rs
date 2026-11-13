@@ -547,3 +547,73 @@ fn clear_all_resets_database_without_deleting_files() {
     assert!(f.root.join("Preserved.psd").exists());
     assert!(f.remote.join("Burak PC/Preserved.psd").exists());
 }
+
+#[test]
+fn restore_version_safely_and_updates_manifest() {
+    let f = Fixture::new();
+    f.write("Project/Logo.ai", b"version-1-initial");
+    let mut e = f.engine("Burak");
+    e.settings.versions = true;
+    e.scan().unwrap();
+    drain(&mut e);
+
+    // Update file
+    f.write("Project/Logo.ai", b"version-2-updated");
+    e.scan().unwrap();
+    drain(&mut e);
+
+    // Verify version is recorded
+    let versions = e.list_versions("Project/Logo.ai").unwrap();
+    assert_eq!(versions.len(), 1);
+    assert_eq!(
+        versions[0].checksum,
+        security::checksum(&f.remote.join("Burak PC").join(&versions[0].remote_path)).unwrap()
+    );
+
+    // Attempting to restore while local file exists MUST fail safely
+    assert!(e.restore_version("Project/Logo.ai", versions[0].id).is_err());
+
+    // Remove local file to restore older version
+    fs::remove_file(f.root.join("Project/Logo.ai")).unwrap();
+    e.restore_version("Project/Logo.ai", versions[0].id).unwrap();
+
+    // Verify restored content matches version 1
+    assert_eq!(
+        fs::read(f.root.join("Project/Logo.ai")).unwrap(),
+        b"version-1-initial"
+    );
+
+    // Verify manifest is updated with restored version's checksum and size
+    let entry = e
+        .db
+        .entries()
+        .unwrap()
+        .into_iter()
+        .find(|e| e.path == "Project/Logo.ai")
+        .unwrap();
+    assert_eq!(entry.size, b"version-1-initial".len() as u64);
+    assert_eq!(entry.checksum, versions[0].checksum);
+    assert_eq!(entry.status, "backed_up");
+}
+
+#[test]
+fn custom_excludes_and_syncignore_support() {
+    let f = Fixture::new();
+    f.write(".syncignore", b"*.tmp\nrender_cache/\n# a comment\n");
+    f.write("work.psd", b"valid psd");
+    f.write("test.TMP", b"temp file");
+    f.write("render_cache/frame1.png", b"frame");
+    f.write("custom_skip/skip.bin", b"skip");
+
+    let mut e = f.engine("Burak");
+    e.settings.custom_excludes = "custom_skip/".into();
+    e.scan().unwrap();
+    drain(&mut e);
+
+    // Only work.psd should be uploaded to remote
+    assert!(f.remote.join("Burak PC/work.psd").exists());
+    assert!(!f.remote.join("Burak PC/test.TMP").exists());
+    assert!(!f.remote.join("Burak PC/render_cache/frame1.png").exists());
+    assert!(!f.remote.join("Burak PC/custom_skip/skip.bin").exists());
+    assert!(!f.remote.join("Burak PC/.syncignore").exists());
+}
