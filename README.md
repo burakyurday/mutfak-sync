@@ -17,7 +17,7 @@
 
 **Mutfak Sync is a one-way desktop backup application for creative teams.** Built for Mutfak Ajans, it preserves local project folders in Google Drive, keeps each workstation in its own destination, and protects cloud copies from local deletion.
 
-> **Initial stable candidate (v0.1.1).** The core and UI have automated test coverage; macOS ARM64 and Windows x64 builds passed CI and user-reported native acceptance with a real Drive upload. Token renewal, failure recovery and platform-specific archive behavior still need extended acceptance. Do not rely on this version as the sole copy of important files.
+> **Current stable candidate (v0.1.2).** The core and UI have automated test coverage; macOS ARM64 and Windows x64 builds passed CI and user-reported native acceptance with a real Drive upload. The app now starts in the tray and hides Windows helper-process consoles. Token renewal, failure recovery and platform-specific archive behavior still need extended acceptance. Do not rely on this version as the sole copy of important files.
 
 | Capability | What it does |
 | :--- | :--- |
@@ -118,6 +118,7 @@ The existing CI matrix runs tests and produces unsigned desktop packages on macO
 | [Hub architecture (TR)](docs/HUB_ARCHITECTURE.md) | Neon tabanlı web Hub ile masaüstü Sync arasındaki sınır |
 | [Changelog](CHANGELOG.md) | Version history and release status |
 | [Roadmap](docs/ROADMAP.md) | Release gates and future work |
+| [Antigravity handoff (TR)](docs/ANTIGRAVITY_HANDOFF.md) | Current release, safety invariants, setup and continuation context |
 | [Security](SECURITY.md) | Vulnerability reporting and safe handling of credentials |
 | [Contributing](CONTRIBUTING.md) | Local development and contribution guidelines |
 
