@@ -161,6 +161,7 @@ impl RcloneProvider {
             use std::io::{BufRead, Read};
             let is_transfer = args.first().is_some_and(|a| a == "copyto");
             let mut command = Command::new(&self.binary);
+            crate::security::hide_windows_console(&mut command);
             command
                 .current_dir(&self.work)
                 .args(args)

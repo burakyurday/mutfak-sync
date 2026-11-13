@@ -18,6 +18,9 @@ See [validation](docs/VALIDATION.md) and [roadmap](docs/ROADMAP.md).
 
 ## Unreleased
 
+- Yapılandırılmış uygulama artık açılışta sessizce sistem tepsisinde çalışıyor; ilk kurulum ve başlangıç hataları gerektiğinde pencereyi açıyor.
+- Windows'ta Rclone, OAuth ve dosya izni yardımcı süreçlerinin terminal penceresi göstermesi engellendi.
+- Resmî Mutfak Ajans logosu arayüze ve platform uygulama simgelerine eklendi.
 - Tauri'nin zorunlu imza doğrulamasını kullanan uygulama içi kararlı sürüm kontrolü, indirme ilerlemesi, güvenli aktarım duraklatma ve yeniden başlatma akışı eklendi.
 - macOS ARM64 ve Windows x64 updater paketlerini imzalayan, `latest.json` üreten; preview ve kararlı kanalları ayıran release iş akışı eklendi.
 - Yayın anahtarı yönetimi, tek seferlik `0.1.1` bootstrap kurulumu, geri alma ve işletim sistemi imzası sınırları dokümante edildi.

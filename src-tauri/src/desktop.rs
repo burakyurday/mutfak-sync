@@ -306,7 +306,9 @@ async fn connect_drive(
                 .open(&config)?;
             security::private_file(&config)?;
             drop(file);
-            let mut child = std::process::Command::new(binary()?)
+            let mut command = std::process::Command::new(binary()?);
+            security::hide_windows_console(&mut command);
+            let mut child = command
                 .args([
                     "config",
                     "create",
@@ -525,6 +527,7 @@ pub fn run() {
             let db = Database::open(&data.join("state.sqlite"))?;
             let saved = db.settings()?;
             drop(db);
+            let first_run = saved.is_none();
             let mut error = None;
             let current = if let Some(s) = saved {
                 match core(&data, s) {
@@ -537,6 +540,7 @@ pub fn run() {
             } else {
                 None
             };
+            let show_on_start = first_run || error.is_some();
             let s = AppState {
                 core: Arc::new(Mutex::new(current)),
                 data,
@@ -601,6 +605,13 @@ pub fn run() {
                 tray = tray.icon(icon.clone());
             }
             tray.build(app)?;
+            // Daily use stays unobtrusive in the tray. Onboarding and startup errors remain visible.
+            if show_on_start {
+                if let Some(window) = app.get_webview_window("main") {
+                    window.show()?;
+                    window.set_focus()?;
+                }
+            }
             Ok(())
         })
         .on_window_event(|w, e| {

@@ -69,7 +69,9 @@ pub fn private_file(path: &Path) -> Result<()> {
     {
         // AppData inherits the current user's ACL. Explicitly remove broad inherited grants.
         let user = std::env::var("USERNAME")?;
-        let status = std::process::Command::new("icacls")
+        let mut command = std::process::Command::new("icacls");
+        hide_windows_console(&mut command);
+        let status = command
             .arg(path)
             .args([
                 "/inheritance:r",
@@ -83,6 +85,18 @@ pub fn private_file(path: &Path) -> Result<()> {
         }
     }
     Ok(())
+}
+
+/// Prevent child command-line tools from flashing a console window in packaged Windows builds.
+pub fn hide_windows_console(command: &mut std::process::Command) {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+    #[cfg(not(windows))]
+    let _ = command;
 }
 pub fn excluded(rel: &str, optional: bool) -> bool {
     rel.split('/').any(|name| {
