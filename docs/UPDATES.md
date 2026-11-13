@@ -18,7 +18,7 @@ Güçlü ve benzersiz parolayı bir parola yöneticisinde saklayın. GitHub depo
 
 - Secret `TAURI_SIGNING_PRIVATE_KEY`: özel anahtar dosyasının eksiksiz içeriği.
 - Secret `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`: anahtar parolası.
-- Variable `TAURI_SIGNING_PUBLIC_KEY`: komutun ürettiği genel anahtar.
+- Variable `TAURI_SIGNING_PUBLIC_KEY`: komutun ürettiği genel anahtar. Yanlışlıkla aynı adla Secret olarak kaydedilmişse workflow güvenli biçimde onu da kabul eder.
 
 Genel anahtar uygulamaya derleme anında gömülür. Özel anahtar yalnız GitHub Actions release işinde updater paketlerinin `.sig` imzasını üretmek için kullanılır. Özel anahtar kaybolursa mevcut kurulumlara aynı güven zincirinden güncelleme gönderilemez; çevrimdışı, şifreli yedek bulundurun.
 
