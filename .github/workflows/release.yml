@@ -94,11 +94,18 @@ jobs:
       - run: npm run sidecar -- ${{ matrix.target }}
       - run: cargo test --manifest-path src-tauri/Cargo.toml --locked
       - name: Build signed updater artifacts and unsigned OS installers
+        shell: bash
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           TAURI_SIGNING_PUBLIC_KEY: ${{ vars.TAURI_SIGNING_PUBLIC_KEY || secrets.TAURI_SIGNING_PUBLIC_KEY }}
-        run: npm run tauri build -- --features desktop --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --ci
+        run: |
+          set -o pipefail
+          if ! npm run tauri build -- --features desktop --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --ci 2>&1 | tee tauri-build.log; then
+            DIAGNOSTIC=$(grep -Ei 'error|failed|invalid|key|password|signature|updater' tauri-build.log | tail -n 8 | tr '\n' ' ')
+            echo "::error title=Tauri signed build failed::${DIAGNOSTIC:-Ayrıntılı build logunu açın}"
+            exit 1
+          fi
       - name: Package macOS files
         if: runner.os == 'macOS'
         env:
