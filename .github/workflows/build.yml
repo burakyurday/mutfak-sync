@@ -38,9 +38,10 @@ jobs:
       - run: npm run sidecar -- ${{ matrix.target }}
       - run: cargo test --manifest-path src-tauri/Cargo.toml --locked
       - name: Build unsigned validation installers
+        shell: bash
         env:
           TAURI_CONFIG: '{"bundle":{"createUpdaterArtifacts":false}}'
-        run: npm run tauri build -- --features desktop --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --ci
+        run: npm run tauri build -- --config "$TAURI_CONFIG" --features desktop --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --ci
       - uses: actions/upload-artifact@v4
         with:
           name: mutfak-sync-${{ matrix.target }}-unsigned
